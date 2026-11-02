@@ -7,6 +7,11 @@
   <link rel="stylesheet" href="/static/style.css">
 </head>
 <body>
+  {% if settings.app_env != "canli" %}
+    <div class="env-bar env-{{ settings.app_env }}">
+      {{ "UAT test ortamı" if settings.app_env == "uat" else "Yerel geliştirme" }} · v{{ version }}
+    </div>
+  {% endif %}
   <header class="topbar">
     <a class="brand" href="/">🏀 {{ settings.app_name }}</a>
     <nav>
@@ -33,6 +38,7 @@
     {% else %}
       {{ settings.app_name }}
     {% endif %}
+    · v{{ version }}
   </footer>
 </body>
 </html>

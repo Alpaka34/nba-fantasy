@@ -1,4 +1,5 @@
 import os
+from typing import Literal
 
 from pydantic import Field
 from pydantic_settings import BaseSettings, SettingsConfigDict
@@ -10,6 +11,8 @@ class Settings(BaseSettings):
     model_config = SettingsConfigDict(env_file=".env", env_file_encoding="utf-8", extra="ignore")
 
     app_name: str = "NBA Fantasy"
+    # Ortam: local (kendi bilgisayarınız), uat (test), canli (yayın)
+    app_env: Literal["local", "uat", "canli"] = "local"
     # Render'da BASE_URL verilmezse servisin kendi adresi kullanılır
     base_url: str = Field(default_factory=lambda: os.environ.get("RENDER_EXTERNAL_URL", "https://localhost:8080"))
     secret_key: str

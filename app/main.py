@@ -9,6 +9,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
+from . import __version__
 from .cache import clear_prefix
 from .config import settings
 from .db import get_db, init_db
@@ -33,6 +34,7 @@ app.add_middleware(
 app.mount("/static", StaticFiles(directory="app/static"), name="static")
 templates = Jinja2Templates(directory="app/templates")
 templates.env.globals["settings"] = settings
+templates.env.globals["version"] = __version__
 
 
 def current_user(request: Request, db: Session = Depends(get_db)) -> User | None:
@@ -215,4 +217,4 @@ def api_weekly():
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True}
+    return {"ok": True, "env": settings.app_env, "version": __version__}

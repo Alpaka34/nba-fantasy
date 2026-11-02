@@ -57,6 +57,12 @@ main { max-width: 1100px; margin: 0 auto; padding: 24px 16px 48px; }
 .topbar nav { display: flex; flex-wrap: wrap; gap: 16px; }
 .topbar nav a { color: var(--text); }
 
+.env-bar {
+  text-align: center; padding: 4px 16px; font-size: 13px; font-weight: 700; letter-spacing: .02em;
+}
+.env-uat { background: #6d3fd1; color: #ffffff; }
+.env-local { background: var(--border); color: var(--muted); }
+
 .banner {
   background: var(--warn-bg); color: var(--warn-text);
   text-align: center; padding: 6px 16px; font-size: 14px;
