@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block content %}
+<section class="hero">
+  <h1>Yahoo Fantasy Basketball liginizin istatistikleri tek yerde</h1>
+  <p class="lead">Yahoo hesabınızı bağlayın; puan durumu, haftalık eşleşmeler ve kadronuz otomatik gelsin.
+    Şifreniz bize hiç gelmez, izni Yahoo üzerinden verir ve istediğiniz zaman geri alırsınız.</p>
+
+  {% if error %}<p class="alert">{{ error }}</p>{% endif %}
+
+  <div class="actions">
+    <a class="btn primary" href="/auth/yahoo">Yahoo ile bağlan</a>
+    {% if settings.demo_mode %}
+      <a class="btn" href="/auth/demo">Demo ile dene</a>
+    {% endif %}
+  </div>
+</section>
+
+<section class="grid3">
+  <div class="card"><h3>Lig durumu</h3><p>Sıralama, galibiyet-mağlubiyet ve bu haftanın eşleşmeleri.</p></div>
+  <div class="card"><h3>Kadronuz</h3><p>Oyuncularınız, pozisyonları ve sakatlık durumları.</p></div>
+  <div class="card"><h3>Haftanın oyuncuları</h3><p>Ligden bağımsız: geçen hafta kim kaç fantasy puanı aldı.</p></div>
+</section>
+{% endblock %}

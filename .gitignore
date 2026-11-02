@@ -1,6 +1,13 @@
-# Yahoo API anahtarları ve token
+# Gizli bilgiler: asla paylaşmayın
+.env
 oauth2.json
+certs/
+
+# Yerel veri
+data/
+fixtures/
 
 __pycache__/
 *.pyc
 .venv/
+*.zip

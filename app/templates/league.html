@@ -1,0 +1,73 @@
+{% extends "base.html" %}
+{% block title %}{{ detail.league.name if detail else "Lig" }} · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<p><a href="/dashboard" class="muted">← Liglerim</a></p>
+
+{% if error %}
+  <p class="alert">{{ error }}</p>
+{% else %}
+  <h1>{{ detail.league.name }}</h1>
+  <p class="muted">Sezon {{ detail.league.season }} · {{ detail.league.num_teams }} takım
+    {% if detail.my_team %} · Takımınız: <strong>{{ detail.my_team.name }}</strong>{% endif %}</p>
+
+  <div class="two-col">
+    <section>
+      <h2>Puan durumu</h2>
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>#</th><th>Takım</th><th class="num">G</th><th class="num">M</th><th class="num">B</th><th class="num">%</th></tr></thead>
+          <tbody>
+            {% for t in detail.standings %}
+              <tr class="{{ 'mine' if t.is_mine }}">
+                <td>{{ t.rank }}</td><td>{{ t.name }}</td>
+                <td class="num">{{ t.wins }}</td><td class="num">{{ t.losses }}</td>
+                <td class="num">{{ t.ties }}</td><td class="num">{{ t.pct }}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    </section>
+
+    <section>
+      <h2>Bu haftanın eşleşmeleri</h2>
+      {% if detail.matchups %}
+        {% for m in detail.matchups %}
+          <div class="matchup">
+            {% for t in m.teams %}
+              <div class="side {{ 'mine' if t.is_mine }}">
+                <span>{{ t.name }}</span><strong>{{ t.points }}</strong>
+              </div>
+            {% endfor %}
+          </div>
+        {% endfor %}
+      {% else %}
+        <p class="muted">Eşleşme verisi yok.</p>
+      {% endif %}
+    </section>
+  </div>
+
+  <section>
+    <h2>Kadronuz</h2>
+    {% if roster %}
+      <div class="table-wrap">
+        <table>
+          <thead><tr><th>Slot</th><th>Oyuncu</th><th>Takım</th><th>Pozisyonlar</th><th>Durum</th></tr></thead>
+          <tbody>
+            {% for p in roster %}
+              <tr>
+                <td><span class="pill">{{ p.selected_position }}</span></td>
+                <td>{{ p.name }}</td><td>{{ p.team }}</td>
+                <td class="muted">{{ p.eligible_positions | join(", ") }}</td>
+                <td>{% if p.status %}<span class="pill warn">{{ p.status }}</span>{% endif %}</td>
+              </tr>
+            {% endfor %}
+          </tbody>
+        </table>
+      </div>
+    {% else %}
+      <p class="muted">Bu ligde size ait bir takım bulunamadı.</p>
+    {% endif %}
+  </section>
+{% endif %}
+{% endblock %}

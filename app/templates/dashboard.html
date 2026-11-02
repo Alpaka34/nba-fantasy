@@ -1,0 +1,21 @@
+{% extends "base.html" %}
+{% block title %}Liglerim · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Liglerim</h1>
+
+{% if error %}
+  <p class="alert">{{ error }}</p>
+{% elif not leagues %}
+  <p class="muted">Bu hesapta NBA fantasy ligi bulunamadı.</p>
+{% else %}
+  <div class="grid3">
+    {% for lg in leagues %}
+      <a class="card link" href="/league/{{ lg.league_key }}">
+        <h3>{{ lg.name }}</h3>
+        <p class="muted">Sezon {{ lg.season }} · {{ lg.num_teams }} takım
+          {% if lg.current_week %} · Hafta {{ lg.current_week }}{% endif %}</p>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

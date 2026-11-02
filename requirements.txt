@@ -1,2 +1,13 @@
-yahoo_oauth
-yahoo_fantasy_api
+fastapi>=0.115
+uvicorn[standard]>=0.30
+jinja2>=3.1
+sqlalchemy>=2.0
+httpx>=0.27
+itsdangerous>=2.2
+pydantic-settings>=2.4
+cryptography>=43
+python-multipart>=0.0.9
+requests>=2.32
+yahoo_fantasy_api>=2.12
+# Yalnızca test_baglanti.py için (site kullanmıyor)
+yahoo_oauth>=2.1

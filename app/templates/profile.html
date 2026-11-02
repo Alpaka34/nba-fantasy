@@ -1,0 +1,40 @@
+{% extends "base.html" %}
+{% block title %}Profil · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Profil</h1>
+
+{% if saved %}<p class="ok">Kaydedildi.</p>{% endif %}
+
+<section class="card narrow">
+  <form method="post" action="/profile">
+    <label for="display_name">Görünen ad</label>
+    <input id="display_name" name="display_name" maxlength="80" value="{{ user.display_name }}" placeholder="Adınız veya takma adınız">
+    <button class="btn primary" type="submit">Kaydet</button>
+  </form>
+</section>
+
+<section class="card narrow">
+  <h3>Yahoo bağlantısı</h3>
+  {% if user.is_demo %}
+    <p class="muted">Demo hesabındasınız. Gerçek liginizi görmek için çıkış yapıp Yahoo ile bağlanın.</p>
+  {% elif user.token %}
+    <p>Yahoo hesabınız bağlı.</p>
+    <form method="post" action="/profile/disconnect">
+      <button class="btn" type="submit">Bağlantıyı kaldır</button>
+    </form>
+    <p class="muted small">İzni ayrıca Yahoo hesap ayarlarınızdan da kaldırabilirsiniz.</p>
+  {% else %}
+    <a class="btn primary" href="/auth/yahoo">Yahoo ile bağlan</a>
+  {% endif %}
+</section>
+
+{% if not user.is_demo %}
+<section class="card narrow danger">
+  <h3>Hesabı sil</h3>
+  <p class="muted">Profiliniz ve kayıtlı Yahoo izniniz kalıcı olarak silinir.</p>
+  <form method="post" action="/profile/delete" onsubmit="return confirm('Hesabınız kalıcı olarak silinsin mi?')">
+    <button class="btn danger" type="submit">Hesabımı sil</button>
+  </form>
+</section>
+{% endif %}
+{% endblock %}

@@ -1,0 +1,23 @@
+# Render Blueprint: UAT (test) ortamı.
+# uat dalına her push'ta otomatik yeniden yüklenir.
+services:
+  - type: web
+    name: nba-fantasy-uat
+    runtime: python
+    plan: free
+    branch: uat
+    autoDeploy: true
+    buildCommand: pip install -r requirements.txt
+    startCommand: uvicorn app.main:app --host 0.0.0.0 --port $PORT --proxy-headers --forwarded-allow-ips "*"
+    healthCheckPath: /healthz
+    envVars:
+      - key: PYTHON_VERSION
+        value: 3.11.9
+      - key: SECRET_KEY
+        generateValue: true
+      - key: TOKEN_ENCRYPTION_KEY
+        generateValue: true
+      - key: DEMO_MODE
+        value: "true"
+      # BASE_URL verilmezse Render'ın kendi adresi (RENDER_EXTERNAL_URL) kullanılır.
+      # Yahoo girişi açılınca YAHOO_CLIENT_ID / YAHOO_CLIENT_SECRET panelden eklenir.

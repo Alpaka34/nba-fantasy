@@ -1,0 +1,38 @@
+<!doctype html>
+<html lang="tr">
+<head>
+  <meta charset="utf-8">
+  <meta name="viewport" content="width=device-width, initial-scale=1">
+  <title>{% block title %}{{ settings.app_name }}{% endblock %}</title>
+  <link rel="stylesheet" href="/static/style.css">
+</head>
+<body>
+  <header class="topbar">
+    <a class="brand" href="/">🏀 {{ settings.app_name }}</a>
+    <nav>
+      <a href="/weekly">Haftanın oyuncuları</a>
+      {% if user %}
+        <a href="/dashboard">Liglerim</a>
+        <a href="/profile">{{ user.display_name or "Profil" }}</a>
+        <a href="/logout" class="muted">Çıkış</a>
+      {% endif %}
+    </nav>
+  </header>
+
+  {% if source == "demo" %}
+    <div class="banner">Örnek veri gösteriliyor. Rakamlar gerçek değildir.</div>
+  {% endif %}
+
+  <main>
+    {% block content %}{% endblock %}
+  </main>
+
+  <footer>
+    {% if source == "yahoo" %}
+      Fantasy data provided by <a href="https://sports.yahoo.com/fantasy/" rel="noopener">Yahoo Fantasy</a>
+    {% else %}
+      {{ settings.app_name }}
+    {% endif %}
+  </footer>
+</body>
+</html>
