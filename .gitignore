@@ -1,0 +1,6 @@
+# Yahoo API anahtarları ve token
+oauth2.json
+
+__pycache__/
+*.pyc
+.venv/
