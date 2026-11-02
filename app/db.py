@@ -6,13 +6,23 @@ from sqlalchemy.orm import DeclarativeBase, sessionmaker
 
 from .config import settings
 
-_is_sqlite = settings.database_url.startswith("sqlite")
+def _normalize_url(url: str) -> str:
+    """Neon/Render'ın verdiği postgres:// adresini SQLAlchemy'nin psycopg sürücüsüne çevirir."""
+    for prefix in ("postgres://", "postgresql://"):
+        if url.startswith(prefix):
+            return "postgresql+psycopg://" + url[len(prefix):]
+    return url
+
+
+_url = _normalize_url(settings.database_url)
+_is_sqlite = _url.startswith("sqlite")
 if _is_sqlite:
     Path("data").mkdir(exist_ok=True)
 
 engine = create_engine(
-    settings.database_url,
+    _url,
     connect_args={"check_same_thread": False} if _is_sqlite else {},
+    pool_pre_ping=True,
 )
 SessionLocal = sessionmaker(engine, expire_on_commit=False)
 

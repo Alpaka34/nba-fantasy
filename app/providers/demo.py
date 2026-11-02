@@ -1,8 +1,6 @@
 """Yahoo erişimi olmadan arayüzü geliştirmek için örnek veri. Gerçek değildir."""
 import random
 
-from ..scoring import DEFAULT_POINTS, fantasy_points
-
 DEMO_LEAGUE_KEY = "demo.l.1"
 
 TEAMS = [
@@ -30,20 +28,6 @@ PLAYERS = [
 ]
 
 SLOTS = ["PG", "SG", "G", "SF", "PF", "F", "C", "C", "Util", "Util", "BN", "BN", "BN"]
-
-
-def _player_line(rng: random.Random, name: str, team: str, pos: str) -> dict:
-    games = rng.choice([2, 3, 3, 4, 4])
-    stats = {
-        "pts": rng.randint(14, 32) * games,
-        "reb": rng.randint(3, 13) * games,
-        "ast": rng.randint(2, 10) * games,
-        "stl": rng.randint(0, 2) * games,
-        "blk": rng.randint(0, 3) * games,
-        "tov": rng.randint(1, 4) * games,
-    }
-    return {"name": name, "team": team, "position": pos, "games": games, **stats,
-            "fpts": fantasy_points(stats)}
 
 
 class DemoProvider:
@@ -100,9 +84,3 @@ class DemoProvider:
         return [{"name": name, "team": team, "selected_position": slot,
                  "eligible_positions": pos.split(","), "status": rng.choice(statuses)}
                 for slot, (name, team, pos) in zip(SLOTS, picks)]
-
-    def weekly_top_players(self, limit: int = 25) -> dict:
-        rng = random.Random("weekly")
-        lines = [_player_line(rng, *p) for p in PLAYERS]
-        lines.sort(key=lambda p: p["fpts"], reverse=True)
-        return {"period": "Geçen hafta", "scoring": DEFAULT_POINTS, "players": lines[:limit]}

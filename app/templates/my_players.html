@@ -1,0 +1,60 @@
+{% extends "base.html" %}
+{% from "_macros.html" import player_cell, pick_button, period_tabs, shooting %}
+{% block title %}Oyuncularım · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<h1>Oyuncularım</h1>
+
+{% if not data or not data.players %}
+  <div class="card narrow">
+    <p>Henüz oyuncu seçmediniz. <a href="/players">Oyuncular</a> sayfasından veya bir maçın
+      kutu skorundan ☆ ile istediğiniz oyuncuları ekleyin.</p>
+    <p class="muted small">Seçimleriniz bu tarayıcıda saklanır, üyelik gerekmez.
+      Yahoo ile bağlanırsanız hesabınıza taşınır.</p>
+  </div>
+{% else %}
+  {{ period_tabs(periods, data.days, "/my?") }}
+  <p class="muted small">{{ data.start }} – {{ data.end }} · {{ data.players | length }} oyuncu ·
+    toplam <strong>{{ data.total_fpts }}</strong> FP</p>
+
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        <th></th><th>Oyuncu</th><th class="num">MS</th><th class="num">SAY</th><th class="num">RIB</th>
+        <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
+        <th class="num">SA</th><th class="num">SR</th><th class="num">FP</th><th class="num">FP/M</th>
+        <th>Son maç</th>
+      </tr></thead>
+      <tbody>
+        {% for p in data.players %}
+          <tr>
+            <td>{{ pick_button(p.player_id, true, "/my?days=" ~ data.days) }}</td>
+            <td>{{ player_cell(p) }}</td>
+            <td class="num">{{ p.games }}</td><td class="num">{{ p.pts }}</td><td class="num">{{ p.reb }}</td>
+            <td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td><td class="num">{{ p.blk }}</td>
+            <td class="num">{{ p.tov }}</td>
+            <td class="num">{{ shooting(p.fgm, p.fga) }}</td><td class="num">{{ shooting(p.ftm, p.fta) }}</td>
+            <td class="num"><strong>{{ p.fpts }}</strong></td><td class="num">{{ p.fpts_avg }}</td>
+            <td class="small">
+              {% if p.last_game %}
+                <a href="/games/{{ p.last_game.game_id }}">{{ p.last_game.date[5:] | replace("-", ".") }}</a>:
+                {{ p.last_game.pts }} sy, {{ p.last_game.reb }} rb, {{ p.last_game.ast }} as
+              {% else %}<span class="muted">–</span>{% endif %}
+            </td>
+          </tr>
+        {% endfor %}
+      </tbody>
+      <tfoot><tr>
+        <td></td><td><strong>Toplam</strong></td><td></td>
+        <td class="num">{{ data.totals.pts }}</td><td class="num">{{ data.totals.reb }}</td>
+        <td class="num">{{ data.totals.ast }}</td><td class="num">{{ data.totals.stl }}</td>
+        <td class="num">{{ data.totals.blk }}</td><td class="num">{{ data.totals.tov }}</td>
+        <td class="num">{{ shooting(data.totals.fgm, data.totals.fga) }}</td>
+        <td class="num">{{ shooting(data.totals.ftm, data.totals.fta) }}</td>
+        <td class="num"><strong>{{ data.total_fpts }}</strong></td><td></td><td></td>
+      </tr></tfoot>
+    </table>
+  </div>
+  <p><a class="btn" href="/players">+ Oyuncu ekle</a></p>
+{% endif %}
+{% include "_legend.html" %}
+{% endblock %}

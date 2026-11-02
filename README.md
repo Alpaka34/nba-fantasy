@@ -29,9 +29,15 @@ python test_baglanti.py
 
 ## Web sitesi (geliştirme notları)
 
-Yahoo hesabını bağlayıp lig istatistiklerini gösteren web sitesi. Ligden
-bağımsız "haftanın oyuncuları" sayfası da var. Yahoo erişimi onaylanana kadar
-demo verisiyle çalışır.
+NBA maç sonuçları, kutu skorlar ve oyuncu istatistikleri; ziyaretçinin üyelik
+olmadan seçtiği oyuncuların fantasy puanları; Yahoo hesabını bağlayanlar için
+lig istatistikleri. Yahoo erişimi onaylanana kadar lig sayfaları demo
+verisiyle çalışır.
+
+**NBA verisi şu an ESPN'in resmi olmayan servisinden geliyor** (anahtarsız,
+ücretsiz, oyuncu fotoğrafları dahil). Kullanım şartları ticari kullanıma izin
+vermeyebilir; CANLI'da herkese açılmadan önce lisanslı bir kaynağa geçilmeli.
+Kaynak tek yerden değişir: `app/nba/source.py`.
 
 ## Ortamlar
 
@@ -77,7 +83,8 @@ kadar "Demo ile dene" düğmesiyle örnek veri üzerinde çalışılır.
 | `app/config.py` | Bütün ayarlar (`.env` veya ortam değişkenleri), ortam bilgisi (`APP_ENV`) |
 | `app/__init__.py` | Sürüm numarası (`__version__`) |
 | `app/yahoo_auth.py` | Yahoo OAuth akışı, kullanıcı başına token saklama ve yenileme |
-| `app/providers/` | Veri kaynakları: `yahoo.py` (gerçek), `demo.py` (örnek). Sayfalar sadece ortak arayüzü kullanır |
+| `app/providers/` | Fantasy lig verisi: `yahoo.py` (gerçek), `demo.py` (örnek). Sayfalar sadece ortak arayüzü kullanır |
+| `app/nba/` | Ligden bağımsız NBA verisi: `source.py` (hangi kaynak), `espn.py`, `sync.py` (kaynaktan veritabanına çekme), `stats.py` (sayfa sorguları, oyuncu seçimleri) |
 | `app/cache.py` | Yahoo cevaplarını veritabanında önbelleğe alır (`CACHE_TTL_SECONDS`) |
 | `app/scoring.py` | Ligden bağımsız sayfalardaki standart fantasy puanlaması |
 | `app/templates/`, `app/static/` | HTML şablonları ve stil |
@@ -91,12 +98,29 @@ kadar "Demo ile dene" düğmesiyle örnek veri üzerinde çalışılır.
 Yahoo'dan gelen ham cevapları örnek veri olarak saklamak için `.env` içinde
 `RECORD_FIXTURES=true` yapın; cevaplar `fixtures/` klasörüne yazılır.
 
+## NBA verisi nasıl güncelleniyor
+
+Zamanlanmış bir görev yok. Bir sayfa belirli günlerin verisine ihtiyaç
+duyduğunda eksik olanlar ESPN'den çekilip veritabanına yazılır: maç listesi
+devam eden günlerde 2 dakikada bir, biten maçların kutu skorları bir kez,
+takım kadroları (sakatlık dahil) 12 saatte bir. Bu yüzden bir dönemin ilk
+açılışı birkaç saniye sürebilir, sonrakiler hızlıdır.
+
+## Veritabanı
+
+- Yerelde SQLite (`data/app.db`).
+- Render'ın ücretsiz planında disk kalıcı değil; SQLite her yüklemede sıfırlanır
+  ve oyuncu seçimleri kaybolur. Bu yüzden UAT ve CANLI için ayrı birer
+  **Neon** (ücretsiz PostgreSQL) veritabanı kullanılır: Render'da servisin
+  "Environment" sekmesine `DATABASE_URL` olarak Neon'un verdiği bağlantı adresi
+  girilir (`postgresql://...`; sürücü otomatik ayarlanır).
+- Tablolar uygulama açılırken oluşturulur. **Var olan bir tabloya sütun
+  eklemek için henüz bir geçiş (migration) aracı yok;** kalıcı kullanıcı verisi
+  oluşmadan önce Alembic eklenmeli.
+
 ## Render notları
 
 - Ücretsiz planda servis 15 dakika kullanılmazsa uyur; ilk açılış 30-60 saniye sürebilir.
-- Ücretsiz planda disk kalıcı değil: SQLite veritabanı her yüklemede sıfırlanır.
-  CANLI'da gerçek kullanıcı verisi saklanmaya başlamadan önce Render PostgreSQL'e
-  geçilip `DATABASE_URL` ayarlanmalı.
 - Alan adı alınca CANLI servisinin "Settings > Custom Domains" bölümünden
   eklenir, `BASE_URL` güncellenir ve Yahoo uygulamasına yeni Redirect URI eklenir.
 

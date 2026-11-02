@@ -1,0 +1,34 @@
+{% extends "base.html" %}
+{% from "_macros.html" import game_status %}
+{% block title %}Maçlar · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<div class="daynav">
+  <a class="btn" href="/games?date={{ prev_day.isoformat() }}" aria-label="Önceki gün">‹</a>
+  <div class="center">
+    <h1>{{ day.strftime("%d.%m.%Y") }}</h1>
+    <div class="muted small">ABD saatiyle NBA günü · saatler Türkiye saatidir</div>
+  </div>
+  <a class="btn" href="/games?date={{ next_day.isoformat() }}" aria-label="Sonraki gün">›</a>
+</div>
+
+{% if not games %}
+  <p class="muted center">Bu gün maç yok.</p>
+{% else %}
+  <div class="grid3">
+    {% for g in games %}
+      <a class="card link game" href="/games/{{ g.id }}">
+        {% for side in ("away", "home") %}
+          {% set t = g[side] %}
+          <div class="gteam {{ 'won' if t.winner }}">
+            <img src="{{ t.logo }}" alt="" width="28" height="28" loading="lazy">
+            <span class="tname">{{ t.name or t.abbr }}</span>
+            <span class="muted small">{{ t.record }}</span>
+            <strong class="score">{{ t.score if t.score is not none and g.state != "pre" else "" }}</strong>
+          </div>
+        {% endfor %}
+        <div class="gfoot">{{ game_status(g) }}</div>
+      </a>
+    {% endfor %}
+  </div>
+{% endif %}
+{% endblock %}

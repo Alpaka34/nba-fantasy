@@ -1,23 +1,25 @@
 {% extends "base.html" %}
 {% block content %}
 <section class="hero">
-  <h1>Yahoo Fantasy Basketball liginizin istatistikleri tek yerde</h1>
-  <p class="lead">Yahoo hesabınızı bağlayın; puan durumu, haftalık eşleşmeler ve kadronuz otomatik gelsin.
-    Şifreniz bize hiç gelmez, izni Yahoo üzerinden verir ve istediğiniz zaman geri alırsınız.</p>
+  <h1>NBA maçları, oyuncu istatistikleri ve fantasy liginiz tek yerde</h1>
+  <p class="lead">Dünkü maçların kutu skorlarına bakın, takip ettiğiniz oyuncuları seçip fantasy
+    puanlarını izleyin. Üyelik gerekmez. Yahoo hesabınızı bağlarsanız liginiz de gelir.</p>
 
   {% if error %}<p class="alert">{{ error }}</p>{% endif %}
 
   <div class="actions">
-    <a class="btn primary" href="/auth/yahoo">Yahoo ile bağlan</a>
+    <a class="btn primary" href="/games">Maçlara bak</a>
+    <a class="btn" href="/players">Oyuncu seç</a>
+    <a class="btn" href="/auth/yahoo">Yahoo ile bağlan</a>
     {% if settings.demo_mode %}
-      <a class="btn" href="/auth/demo">Demo ile dene</a>
+      <a class="btn" href="/auth/demo">Lig demosu</a>
     {% endif %}
   </div>
 </section>
 
 <section class="grid3">
-  <div class="card"><h3>Lig durumu</h3><p>Sıralama, galibiyet-mağlubiyet ve bu haftanın eşleşmeleri.</p></div>
-  <div class="card"><h3>Kadronuz</h3><p>Oyuncularınız, pozisyonları ve sakatlık durumları.</p></div>
-  <div class="card"><h3>Haftanın oyuncuları</h3><p>Ligden bağımsız: geçen hafta kim kaç fantasy puanı aldı.</p></div>
+  <a class="card link" href="/games"><h3>Maçlar</h3><p>Günün sonuçları, canlı skorlar ve oyuncu bazında kutu skorlar.</p></a>
+  <a class="card link" href="/players"><h3>Oyuncular</h3><p>Son 7 ve 14 günün en iyileri, isimle arama.</p></a>
+  <a class="card link" href="/my"><h3>Oyuncularım</h3><p>Kendi seçtiğiniz oyuncuların toplamları ve fantasy puanları.</p></a>
 </section>
 {% endblock %}

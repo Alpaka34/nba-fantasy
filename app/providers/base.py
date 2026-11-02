@@ -9,7 +9,8 @@ Tüm dönüş değerleri JSON'a çevrilebilir sade dict/list yapılarıdır
     Standing      = {rank, team_key, name, wins, losses, ties, pct, is_mine}
     Matchup       = {week, teams: [{team_key, name, points, is_mine}, ...]}
     RosterPlayer  = {name, team, selected_position, eligible_positions, status}
-    PlayerLine    = {name, team, position, games, pts, reb, ast, stl, blk, tov, fpts}
+
+Ligden bağımsız NBA verisi (maçlar, oyuncu istatistikleri) app/nba/ altındadır.
 """
 from typing import Protocol
 
@@ -28,7 +29,3 @@ class FantasyProvider(Protocol):
         ...
 
     def my_roster(self, league_key: str) -> list[dict]: ...
-
-    def weekly_top_players(self, limit: int = 25) -> dict:
-        """{period, scoring, players: [PlayerLine]} döner."""
-        ...

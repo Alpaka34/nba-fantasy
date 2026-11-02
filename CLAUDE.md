@@ -26,8 +26,18 @@ Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
 ## Kod
 
 - Python 3.11, FastAPI + Jinja şablonları, SQLAlchemy. Node yok.
-- Sayfalar veriyi sadece `app/providers/` arayüzünden alır. Yahoo'ya özel kod
-  `providers/yahoo.py` ve `yahoo_auth.py` dışına taşmaz.
+- Fantasy lig sayfaları veriyi sadece `app/providers/` arayüzünden alır. Yahoo'ya
+  özel kod `providers/yahoo.py` ve `yahoo_auth.py` dışına taşmaz.
+- Ligden bağımsız NBA verisi `app/nba/` altında; şu an ESPN'in resmi olmayan
+  servisi (`espn.py`). ESPN'e özgü yapı `espn.py` dışına çıkmaz; kaynak
+  `source.py`'den değiştirilir. CANLI'da herkese açılmadan önce lisanslı
+  kaynağa geçilmesi gerektiği proje sahibine söylendi.
+- Oyuncu seçimleri (`Pick`) Yahoo kullanıcısına ya da çereze bağlı misafir
+  kaydına (`User.is_guest`) aittir; demo hesabı ortak olduğu için demo
+  kullanıcısının seçimleri de misafir kaydına yazılır.
+- Şema değişikliği: migration aracı yok; `create_all` sadece yeni tablo
+  oluşturur. Var olan tabloya sütun eklenecekse önce Alembic kurulmalı
+  (Neon'daki veri kalıcı).
 - Ayarlar `app/config.py` üzerinden, `.env` veya ortam değişkenlerinden gelir.
   Ortama göre davranış `settings.app_env` (`local` / `uat` / `canli`) ile ayrılır.
 - Gizli bilgiler (`.env`, `oauth2.json`, `certs/`) asla commit edilmez.

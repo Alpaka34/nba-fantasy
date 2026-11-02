@@ -188,6 +188,3 @@ class YahooProvider:
             } for p in roster]
 
         return self._cached(f"roster:{my_team['team_key']}", fetch)
-
-    def weekly_top_players(self, limit: int = 25) -> dict:
-        raise DataUnavailable("Ligden bağımsız oyuncu istatistikleri için veri kaynağı henüz bağlanmadı.")

@@ -12,16 +12,23 @@
       {{ "UAT test ortamı" if settings.app_env == "uat" else "Yerel geliştirme" }} · v{{ version }}
     </div>
   {% endif %}
+  {% set path = request.url.path %}
   <header class="topbar">
     <a class="brand" href="/">🏀 {{ settings.app_name }}</a>
-    <nav>
-      <a href="/weekly">Haftanın oyuncuları</a>
+    <nav class="mainnav">
+      <a href="/games" class="{{ 'on' if path.startswith('/games') }}"><span class="ico">🗓</span>Maçlar</a>
+      <a href="/players" class="{{ 'on' if path.startswith('/players') }}"><span class="ico">📊</span>Oyuncular</a>
+      <a href="/my" class="{{ 'on' if path.startswith('/my') }}"><span class="ico">★</span>Oyuncularım</a>
+      <a href="/dashboard" class="{{ 'on' if path.startswith('/dashboard') or path.startswith('/league') }}"><span class="ico">🏆</span>Liglerim</a>
+    </nav>
+    <div class="account">
       {% if user %}
-        <a href="/dashboard">Liglerim</a>
         <a href="/profile">{{ user.display_name or "Profil" }}</a>
         <a href="/logout" class="muted">Çıkış</a>
+      {% else %}
+        <a href="/auth/yahoo">Yahoo ile bağlan</a>
       {% endif %}
-    </nav>
+    </div>
   </header>
 
   {% if source == "demo" %}
@@ -35,6 +42,8 @@
   <footer>
     {% if source == "yahoo" %}
       Fantasy data provided by <a href="https://sports.yahoo.com/fantasy/" rel="noopener">Yahoo Fantasy</a>
+    {% elif source == "nba" %}
+      NBA verileri: {{ nba_source }}
     {% else %}
       {{ settings.app_name }}
     {% endif %}
