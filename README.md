@@ -38,8 +38,8 @@ demo verisiyle çalışır.
 | Ortam | Git dalı | Adres | Ne için |
 |---|---|---|---|
 | Yerel | çalışma kopyası | https://localhost:8080 | Geliştirme |
-| **UAT** | `uat` | Render: `nba-fantasy-uat` | Onay öncesi test |
-| **CANLI** | `main` | Render: `nba-fantasy` | Yayındaki site |
+| **UAT** | `uat` | https://nba-fantasy-uat.onrender.com | Onay öncesi test |
+| **CANLI** | `main` | Render: `nba-fantasy` (ilk onaydan sonra; ileride kendi alan adı) | Yayındaki site |
 
 Bütün geliştirme `uat` dalında yapılır ve oraya gönderilince UAT sitesi
 otomatik güncellenir. UAT'de incelenip **"uygundur"** onayı verilen sürüm

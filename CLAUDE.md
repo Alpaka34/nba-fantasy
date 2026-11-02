@@ -8,6 +8,10 @@ yapılabiliyorsa Claude kendisi çalıştırır.
 
 Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
 
+- UAT: https://nba-fantasy-uat.onrender.com (Render servisi `nba-fantasy-uat`)
+- CANLI: Render servisi `nba-fantasy`. İlk onaya kadar `main`'de site kodu
+  olmadığı için deploy'u "failed" görünür; bu beklenen bir durum.
+
 - Bütün işler `uat` dalında yapılır. **`main`'e doğrudan commit atılmaz.**
 - İş bitince: test et → `CHANGELOG.md` içindeki "UAT'de bekleyenler"e ekle →
   commit → `git push origin uat`. Ardından proje sahibine UAT'de neye
