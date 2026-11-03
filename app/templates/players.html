@@ -1,45 +1,25 @@
 {% extends "base.html" %}
-{% from "_macros.html" import player_cell, pick_button, period_tabs %}
-{% block title %}Oyuncular · {{ settings.app_name }}{% endblock %}
+{% from "_macros.html" import leaders_table, period_tabs, pick_note with context %}
+{% block title %}{{ _("Oyuncular") }} · {{ settings.app_name }}{% endblock %}
 {% block content %}
-<h1>Oyuncular</h1>
+<h1>{{ _("Oyuncular") }}</h1>
 
 <form class="search" method="get" action="/players">
   <input type="hidden" name="days" value="{{ data.days }}">
-  <input name="q" value="{{ q }}" placeholder="Oyuncu ara (ör. Şengün, Jokic)" autocomplete="off">
-  <button class="btn primary" type="submit">Ara</button>
-  {% if q %}<a class="btn" href="/players?days={{ data.days }}">Temizle</a>{% endif %}
+  <input name="q" value="{{ q }}" placeholder="{{ _('Oyuncu ara (ör. Şengün, Jokic)') }}" autocomplete="off">
+  <button class="btn primary" type="submit">{{ _("Ara") }}</button>
+  {% if q %}<a class="btn" href="/players?days={{ data.days }}">{{ _("Temizle") }}</a>{% endif %}
 </form>
 
-{{ period_tabs(periods, data.days, "/players?" ~ ("q=" ~ q ~ "&" if q else "")) }}
+{{ period_tabs(periods, data.days, "/players?" ~ ("q=" ~ (q | urlencode) ~ "&" if q else "")) }}
 <p class="muted small">{{ data.start }} – {{ data.end }} ·
-  {{ "Arama sonuçları" if q else "Fantasy puanına göre en iyiler" }}</p>
+  {{ _("Arama sonuçları") if q else _("Fantasy puanına göre en iyiler") }}</p>
 
 {% if not data.players %}
-  <p class="muted">{{ "Bu isimde oyuncu bulunamadı." if q else "Bu dönemde oynanmış maç yok." }}</p>
+  <p class="muted">{{ _("Bu isimde oyuncu bulunamadı.") if q else _("Bu dönemde oynanmış maç yok.") }}</p>
 {% else %}
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th></th><th>#</th><th>Oyuncu</th><th class="num">MS</th><th class="num">SAY</th><th class="num">RIB</th>
-        <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
-        <th class="num">FP</th><th class="num">FP/M</th>
-      </tr></thead>
-      <tbody>
-        {% for p in data.players %}
-          <tr>
-            <td>{{ pick_button(p.player_id, p.player_id in picked, request.url.path ~ "?" ~ request.url.query) }}</td>
-            <td class="muted">{{ loop.index }}</td>
-            <td>{{ player_cell(p) }}</td>
-            <td class="num">{{ p.games }}</td><td class="num">{{ p.pts }}</td><td class="num">{{ p.reb }}</td>
-            <td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td><td class="num">{{ p.blk }}</td>
-            <td class="num">{{ p.tov }}</td><td class="num"><strong>{{ p.fpts }}</strong></td>
-            <td class="num">{{ p.fpts_avg }}</td>
-          </tr>
-        {% endfor %}
-      </tbody>
-    </table>
-  </div>
+  {{ pick_note(pick) }}
+  {{ leaders_table(data.players, pick, here) }}
 {% endif %}
 {% include "_legend.html" %}
 {% endblock %}

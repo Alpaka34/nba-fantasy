@@ -1,5 +1,6 @@
 """Sayfaların ve JSON API'nin kullandığı NBA sorguları. Hepsi sade dict döndürür."""
 import json
+import re
 import unicodedata
 from datetime import date, timedelta, timezone
 from zoneinfo import ZoneInfo
@@ -7,7 +8,7 @@ from zoneinfo import ZoneInfo
 from sqlalchemy import func
 from sqlalchemy.orm import Session
 
-from ..models import NbaGame, NbaPlayer, Pick, PlayerGameLine, User
+from ..models import LeaguePick, MyLeague, NbaGame, NbaPlayer, PlayerGameLine
 from ..scoring import fantasy_points
 from . import source
 from .sync import date_range, ensure_days, ensure_players, nba_today
@@ -140,32 +141,61 @@ def search_players(db: Session, query: str, days: int = 7, limit: int = 30) -> d
             "players": players}
 
 
-# --- Kullanıcının seçtiği oyuncular -------------------------------------------
+# --- Oyuncularım: lig kadroları ve kendi ligleri -------------------------------
 
-def picked_ids(db: Session, user: User | None) -> set[str]:
-    if user is None:
-        return set()
-    return {p.player_id for p in db.query(Pick).filter_by(user_id=user.id)}
+_SUFFIXES = {"jr", "sr", "ii", "iii", "iv"}
 
 
-def my_players(db: Session, user: User, days: int = 7) -> dict:
+def _name_key(name: str) -> str:
+    """İsim eşleştirme anahtarı: "Jaren Jackson Jr." → "jaren jackson"."""
+    words = re.sub(r"[^a-z0-9 ]", " ", _fold(name)).split()
+    return " ".join(w for w in words if w not in _SUFFIXES)
+
+
+def match_roster(db: Session, roster: list[dict]) -> list[dict]:
+    """Fantasy kadrosundaki (Yahoo veya demo) oyuncuları NBA verisindeki oyuncularla eşleştirir.
+
+    Kaynaklar arasında ortak bir oyuncu kimliği olmadığı için isimden eşleştirilir;
+    eşleşmeyen oyuncu istatistiksiz listelenir.
+    """
+    ensure_players(db)
+    by_name: dict[str, str] = {}
+    for p in db.query(NbaPlayer):
+        by_name.setdefault(_name_key(p.name), p.id)
+    return [{"player_id": by_name.get(_name_key(r["name"])), "name": r["name"], "team": r["team"],
+             "position": ",".join(r.get("eligible_positions") or []),
+             "slot": r.get("selected_position", ""), "status": r.get("status", "")}
+            for r in roster]
+
+
+def _empty_row(player_id: str | None) -> dict:
+    row = {"player_id": player_id, "games": 0, "fpts_avg": 0, **{f: 0 for f in STAT_FIELDS}}
+    return _with_extras(row) if player_id else {**row, "fpts": 0, "headshot": ""}
+
+
+def players_report(db: Session, entries: list[dict], days: int = 7) -> dict:
+    """Verilen oyuncuların dönem toplamları ve son maçları, verilen sırayla.
+
+    entries: [{player_id, name?, team?, position?, slot?, status?}]; player_id boş olabilir.
+    """
     ensure_players(db)
     start, end = period_bounds(db, days)
-    ids = [p.player_id for p in db.query(Pick).filter_by(user_id=user.id).order_by(Pick.created_at)]
+    ids = [e["player_id"] for e in entries if e.get("player_id")]
     stats = {r["player_id"]: r for r in _aggregate(db, start, end, ids)}
     info = {p.id: p for p in db.query(NbaPlayer).filter(NbaPlayer.id.in_(ids))}
 
     players = []
-    for pid in ids:
-        row = stats.get(pid) or _with_extras({"player_id": pid, "games": 0, "fpts_avg": 0,
-                                              **{f: 0 for f in STAT_FIELDS}})
+    for e in entries:
+        pid = e.get("player_id")
+        row = dict(stats.get(pid) or _empty_row(pid))
         p = info.get(pid)
-        row.update(name=p.name if p else row.get("name", pid),
-                   team=p.team if p else row.get("team", ""),
-                   position=p.position if p else row.get("position", ""),
-                   injury=p.injury if p else "")
+        row.update(name=p.name if p else e.get("name") or row.get("name") or pid,
+                   team=p.team if p else e.get("team") or row.get("team", ""),
+                   position=p.position if p else e.get("position") or row.get("position", ""),
+                   injury=(p.injury if p else "") or e.get("status", ""),
+                   slot=e.get("slot", ""), matched=pid is not None)
         last = (db.query(PlayerGameLine).filter_by(player_id=pid)
-                .order_by(PlayerGameLine.game_date.desc()).first())
+                .order_by(PlayerGameLine.game_date.desc()).first()) if pid else None
         row["last_game"] = _with_extras(_line_dict(last)) if last else None
         players.append(row)
 
@@ -175,21 +205,16 @@ def my_players(db: Session, user: User, days: int = 7) -> dict:
             "totals": totals}
 
 
-def add_pick(db: Session, user: User, player_id: str) -> None:
-    if not db.query(Pick).filter_by(user_id=user.id, player_id=player_id).first():
-        db.add(Pick(user_id=user.id, player_id=player_id))
+def picked_ids(league: MyLeague | None) -> set[str]:
+    return {p.player_id for p in league.picks} if league else set()
+
+
+def add_pick(db: Session, league: MyLeague, player_id: str) -> None:
+    if player_id not in picked_ids(league):
+        db.add(LeaguePick(league_id=league.id, player_id=player_id))
         db.commit()
 
 
-def remove_pick(db: Session, user: User, player_id: str) -> None:
-    db.query(Pick).filter_by(user_id=user.id, player_id=player_id).delete()
-    db.commit()
-
-
-def move_picks(db: Session, from_user: User, to_user: User) -> None:
-    """Misafirin seçtiği oyuncuları (ör. Yahoo'ya bağlanınca) hesabına taşır."""
-    existing = picked_ids(db, to_user)
-    for pick in list(from_user.picks):
-        if pick.player_id not in existing:
-            db.add(Pick(user_id=to_user.id, player_id=pick.player_id))
+def remove_pick(db: Session, league: MyLeague, player_id: str) -> None:
+    db.query(LeaguePick).filter_by(league_id=league.id, player_id=player_id).delete()
     db.commit()

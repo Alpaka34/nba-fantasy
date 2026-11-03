@@ -14,7 +14,8 @@ from . import __version__
 from .cache import clear_prefix
 from .config import settings
 from .db import get_db, init_db
-from .models import User
+from .i18n import COOKIE as LANG_COOKIE, LANGUAGES, get_lang, translator
+from .models import MyLeague, User
 from .nba import source as nba_source
 from .nba import stats as nba
 from .providers import DataUnavailable, provider_for
@@ -51,13 +52,19 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User | None
     return None if user is None or user.is_guest else user
 
 
-def picker(request: Request, db: Session, user: User | None, create: bool = False) -> User | None:
-    """Oyuncu seçimlerinin sahibi.
+MAX_OWN_LEAGUES = 20
 
-    Yahoo ile bağlanan kullanıcı kendi hesabını kullanır. Diğer herkes (demo
-    dahil, çünkü demo hesabı ortak) çereze bağlı bir misafir kaydı kullanır.
+
+def list_owner(request: Request, db: Session, user: User | None, create: bool = False) -> User | None:
+    """Kendi liglerinin (elle seçilen oyuncular) sahibi.
+
+    Giriş yapmamış ziyaretçinin ve Yahoo'ya bağlı kullanıcının kendi ligi olmaz;
+    Yahoo'ya bağlı kullanıcının oyuncuları Yahoo kadrosundan gelir. Demo hesabı
+    ortak olduğu için demoya giren her tarayıcı çereze bağlı ayrı bir kayıt kullanır.
     """
-    if user and not user.is_demo:
+    if user is None or user.token is not None:
+        return None
+    if not user.is_demo:
         return user
     guest_id = request.session.get("guest_id")
     guest = db.get(User, guest_id) if guest_id else None
@@ -67,6 +74,49 @@ def picker(request: Request, db: Session, user: User | None, create: bool = Fals
         db.commit()
         request.session["guest_id"] = guest.id
     return guest
+
+
+def own_league(db: Session, owner: User | None, league_id: int | None) -> MyLeague | None:
+    league = db.get(MyLeague, league_id) if owner and league_id else None
+    return league if league and league.user_id == owner.id else None
+
+
+def active_league(request: Request, db: Session, owner: User | None) -> MyLeague | None:
+    """☆ ile eklenen oyuncuların gideceği lig: Oyuncularım'da en son açılan kendi ligi."""
+    if owner is None:
+        return None
+    league = own_league(db, owner, request.session.get("active_league"))
+    return league or (owner.my_leagues[0] if owner.my_leagues else None)
+
+
+def create_league(db: Session, owner: User, name: str) -> MyLeague:
+    league = MyLeague(user_id=owner.id, name=name.strip()[:60] or f"Ligim {len(owner.my_leagues) + 1}")
+    db.add(league)
+    db.commit()
+    db.refresh(owner)
+    return league
+
+
+def pick_context(request: Request, db: Session, user: User | None) -> dict:
+    """Oyuncu listelerindeki ☆ düğmesinin davranışı.
+
+    login: giriş sayfasına götürür · off: gösterilmez (Yahoo kadrosu kullanılır) ·
+    pick: etkin kendi ligine ekler/çıkarır (lig yoksa ilk ekleyişte oluşturulur).
+    """
+    if user is None:
+        return {"mode": "login"}
+    if user.token is not None:
+        return {"mode": "off"}
+    league = active_league(request, db, list_owner(request, db, user))
+    return {"mode": "pick", "league": league, "picked": nba.picked_ids(league)}
+
+
+def login_url(next_url: str) -> str:
+    return "/login?" + urlencode({"next": next_url})
+
+
+def current_url(request: Request) -> str:
+    return request.url.path + ("?" + request.url.query if request.url.query else "")
 
 
 def safe_next(url: str, default: str) -> str:
@@ -84,7 +134,7 @@ def require_user(request: Request, user: User | None = Depends(current_user)) ->
     if user is None:
         if request.url.path.startswith("/api/"):
             raise HTTPException(status_code=401, detail="Giriş yapılmamış.")
-        raise HTTPException(status_code=303, headers={"Location": "/"})
+        raise HTTPException(status_code=303, headers={"Location": login_url(current_url(request))})
     return user
 
 
@@ -93,21 +143,37 @@ def home_with_error(message: str) -> RedirectResponse:
 
 
 def render(request: Request, name: str, user: User | None, **ctx):
-    return templates.TemplateResponse(request, name, {"user": user, **ctx})
+    lang = get_lang(request)
+    return templates.TemplateResponse(request, name, {
+        "user": user, "lang": lang, "languages": LANGUAGES, "_": translator(lang),
+        "here": current_url(request), **ctx,
+    })
 
 
 # --- Sayfalar -------------------------------------------------------------
 
 @app.get("/")
-def index(request: Request, user: User | None = Depends(current_user)):
-    if user and not user.is_demo:
-        return RedirectResponse("/dashboard", status_code=303)
-    return render(request, "index.html", user, error=request.query_params.get("error"))
+def index(request: Request, tab: str = "games", date: str | None = None, days: int = 7,
+          user: User | None = Depends(current_user), db: Session = Depends(get_db)):
+    """Ana sayfa: Maçlar ve Oyuncular sekmeleri aynı kutuda."""
+    ctx = {}
+    if tab == "players":
+        ctx.update(data=nba.leaders(db, days, limit=10), periods=nba.PERIODS,
+                   pick=pick_context(request, db, user))
+    else:
+        tab = "games"
+        day = parse_day(date, db)
+        ctx.update(day=day, games=nba.games_on(db, day),
+                   prev_day=day - timedelta(days=1), next_day=day + timedelta(days=1))
+    return render(request, "index.html", user, tab=tab, source="nba",
+                  error=request.query_params.get("error"), **ctx)
 
 
 @app.get("/dashboard")
 def dashboard(request: Request, user: User = Depends(require_user), db: Session = Depends(get_db)):
     provider = provider_for(db, user)
+    if provider is None:
+        return render(request, "dashboard.html", user, leagues=[], error=None, source=None)
     try:
         leagues, error = provider.leagues(), None
     except DataUnavailable as e:
@@ -120,6 +186,8 @@ def dashboard(request: Request, user: User = Depends(require_user), db: Session 
 def league(league_key: str, request: Request, user: User = Depends(require_user),
            db: Session = Depends(get_db)):
     provider = provider_for(db, user)
+    if provider is None:
+        return RedirectResponse("/dashboard", status_code=303)
     try:
         detail = provider.league_detail(league_key)
         roster = provider.my_roster(league_key)
@@ -152,7 +220,7 @@ def game(game_id: str, request: Request, user: User | None = Depends(current_use
     if detail is None:
         raise HTTPException(404, "Maç bulunamadı.")
     return render(request, "game.html", user, game=detail,
-                  picked=nba.picked_ids(db, picker(request, db, user)), source="nba")
+                  pick=pick_context(request, db, user), source="nba")
 
 
 @app.get("/players")
@@ -160,32 +228,124 @@ def players(request: Request, days: int = 7, q: str = "", user: User | None = De
             db: Session = Depends(get_db)):
     data = nba.search_players(db, q, days) if q.strip() else nba.leaders(db, days)
     return render(request, "players.html", user, data=data, q=q.strip(), periods=nba.PERIODS,
-                  picked=nba.picked_ids(db, picker(request, db, user)), source="nba")
+                  pick=pick_context(request, db, user), source="nba")
 
 
 @app.get("/my")
-def my_players(request: Request, days: int = 7, user: User | None = Depends(current_user),
-               db: Session = Depends(get_db)):
-    owner = picker(request, db, user)
-    data = nba.my_players(db, owner, days) if owner else None
-    return render(request, "my_players.html", user, data=data, periods=nba.PERIODS,
-                  days=days, source="nba")
+def my_players_old(request: Request):
+    """Eski adres."""
+    return RedirectResponse("/myplayers" + ("?" + request.url.query if request.url.query else ""),
+                            status_code=301)
 
 
-@app.post("/my/add")
-def my_add(request: Request, player_id: str = Form(...), next: str = Form("/my"),
-           user: User | None = Depends(current_user), db: Session = Depends(get_db)):
-    nba.add_pick(db, picker(request, db, user, create=True), player_id)
-    return RedirectResponse(safe_next(next, "/my"), status_code=303)
+@app.get("/myplayers")
+def my_players(request: Request, league: str = "", days: int = 7, q: str = "",
+               user: User | None = Depends(current_user), db: Session = Depends(get_db)):
+    """Oyuncularım: her lig bir sekme. Yahoo (veya demo) liglerinin kadrosu otomatik gelir;
+    Yahoo'ya bağlı olmayan kullanıcı kendi liglerini oluşturup oyuncu seçer."""
+    if user is None:
+        return render(request, "my_players.html", user, tabs=[], source="nba")
+
+    tabs, error = [], None
+    provider = provider_for(db, user)
+    if provider is not None:
+        try:
+            tabs += [{"key": lg["league_key"], "name": lg["name"], "kind": provider.source}
+                     for lg in provider.leagues()]
+        except DataUnavailable as e:
+            error = str(e)
+    owner = list_owner(request, db, user)
+    own = {f"my-{lg.id}": lg for lg in (owner.my_leagues if owner else [])}
+    tabs += [{"key": key, "name": lg.name, "kind": "own", "id": lg.id} for key, lg in own.items()]
+
+    keys = [t["key"] for t in tabs]
+    active = active_league(request, db, owner)
+    key = league if league in keys else (
+        f"my-{active.id}" if active and not league else (keys[0] if keys else ""))
+    current = next((t for t in tabs if t["key"] == key), None)
+
+    data, search, pick = None, None, {"mode": "off"}
+    if current and current["kind"] == "own":
+        my = own[key]
+        request.session["active_league"] = my.id
+        data = nba.players_report(db, [{"player_id": p.player_id} for p in my.picks], days)
+        pick = {"mode": "pick", "league": my, "picked": nba.picked_ids(my)}
+        if q.strip():
+            search = nba.search_players(db, q, days, limit=10)
+    elif current:
+        try:
+            data = nba.players_report(db, nba.match_roster(db, provider.my_roster(key)), days)
+        except DataUnavailable as e:
+            error = str(e)
+
+    return render(request, "my_players.html", user, tabs=tabs, current=current, data=data,
+                  search=search, pick=pick, q=q.strip(), error=error, days=days,
+                  periods=nba.PERIODS, can_own=user.token is None,
+                  max_leagues=MAX_OWN_LEAGUES, source="nba")
 
 
-@app.post("/my/remove")
-def my_remove(request: Request, player_id: str = Form(...), next: str = Form("/my"),
-              user: User | None = Depends(current_user), db: Session = Depends(get_db)):
-    owner = picker(request, db, user)
-    if owner:
-        nba.remove_pick(db, owner, player_id)
-    return RedirectResponse(safe_next(next, "/my"), status_code=303)
+def _back(next_url: str) -> RedirectResponse:
+    return RedirectResponse(safe_next(next_url, "/myplayers"), status_code=303)
+
+
+@app.post("/myplayers/add")
+def my_add(request: Request, player_id: str = Form(...), league_id: int | None = Form(None),
+           next: str = Form("/myplayers"), user: User | None = Depends(current_user),
+           db: Session = Depends(get_db)):
+    if user is None:
+        return RedirectResponse(login_url(safe_next(next, "/myplayers")), status_code=303)
+    owner = list_owner(request, db, user, create=True)
+    if owner is None:
+        return _back(next)
+    league = own_league(db, owner, league_id) or active_league(request, db, owner)
+    if league is None:
+        league = create_league(db, owner, "")
+    request.session["active_league"] = league.id
+    nba.add_pick(db, league, player_id)
+    return _back(next)
+
+
+@app.post("/myplayers/remove")
+def my_remove(request: Request, player_id: str = Form(...), league_id: int | None = Form(None),
+              next: str = Form("/myplayers"), user: User | None = Depends(current_user),
+              db: Session = Depends(get_db)):
+    owner = list_owner(request, db, user)
+    league = own_league(db, owner, league_id) or active_league(request, db, owner)
+    if league:
+        nba.remove_pick(db, league, player_id)
+    return _back(next)
+
+
+@app.post("/myplayers/leagues")
+def my_league_create(request: Request, name: str = Form(""), user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    owner = list_owner(request, db, user, create=True)
+    if owner is None or len(owner.my_leagues) >= MAX_OWN_LEAGUES:
+        return _back("/myplayers")
+    league = create_league(db, owner, name)
+    request.session["active_league"] = league.id
+    return _back(f"/myplayers?league=my-{league.id}")
+
+
+@app.post("/myplayers/leagues/{league_id}/rename")
+def my_league_rename(league_id: int, request: Request, name: str = Form(""),
+                     user: User = Depends(require_user), db: Session = Depends(get_db)):
+    league = own_league(db, list_owner(request, db, user), league_id)
+    if league and name.strip():
+        league.name = name.strip()[:60]
+        db.commit()
+    return _back(f"/myplayers?league=my-{league_id}")
+
+
+@app.post("/myplayers/leagues/{league_id}/delete")
+def my_league_delete(league_id: int, request: Request, user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    league = own_league(db, list_owner(request, db, user), league_id)
+    if league:
+        db.delete(league)
+        db.commit()
+        request.session.pop("active_league", None)
+    return _back("/myplayers")
 
 
 @app.get("/profile")
@@ -226,12 +386,28 @@ def profile_delete(request: Request, user: User = Depends(require_user),
 
 # --- Giriş / çıkış ----------------------------------------------------------
 
+@app.get("/login")
+def login(request: Request, next: str = "/", user: User | None = Depends(current_user)):
+    next_url = safe_next(next, "/")
+    if user:
+        return RedirectResponse(next_url, status_code=303)
+    return render(request, "login.html", user, next=next_url,
+                  error=request.query_params.get("error"))
+
+
+def _after_login(request: Request) -> RedirectResponse:
+    return RedirectResponse(safe_next(request.session.pop("next", "/"), "/"), status_code=303)
+
+
 @app.get("/auth/yahoo")
-def auth_yahoo(request: Request):
+def auth_yahoo(request: Request, next: str = "/"):
     if not settings.yahoo_configured:
-        return home_with_error("Yahoo girişi bu ortamda henüz açık değil (Yahoo anahtarları tanımlı değil).")
+        return RedirectResponse(login_url(next) + "&" + urlencode(
+            {"error": "Yahoo girişi bu ortamda henüz açık değil (Yahoo anahtarları tanımlı değil)."}),
+            status_code=303)
     state = secrets.token_urlsafe(24)
     request.session["oauth_state"] = state
+    request.session["next"] = safe_next(next, "/")
     return RedirectResponse(authorization_url(state), status_code=303)
 
 
@@ -248,20 +424,15 @@ def auth_callback(request: Request, db: Session = Depends(get_db),
     except YahooAuthError as e:
         return home_with_error(str(e))
 
-    # Bağlanmadan önce misafir olarak seçtiği oyuncular hesabına geçer
-    guest_id = request.session.pop("guest_id", None)
-    guest = db.get(User, guest_id) if guest_id else None
-    if guest and guest.is_guest:
-        nba.move_picks(db, guest, user)
-        db.delete(guest)
-        db.commit()
-
     request.session["user_id"] = user.id
-    return RedirectResponse("/profile" if is_new else "/dashboard", status_code=303)
+    if is_new:
+        request.session.pop("next", None)
+        return RedirectResponse("/profile", status_code=303)
+    return _after_login(request)
 
 
 @app.get("/auth/demo")
-def auth_demo(request: Request, db: Session = Depends(get_db)):
+def auth_demo(request: Request, next: str = "/", db: Session = Depends(get_db)):
     if not settings.demo_mode:
         raise HTTPException(404)
     user = db.query(User).filter_by(is_demo=True).first()
@@ -270,14 +441,24 @@ def auth_demo(request: Request, db: Session = Depends(get_db)):
         db.add(user)
         db.commit()
     request.session["user_id"] = user.id
-    return RedirectResponse("/dashboard", status_code=303)
+    return RedirectResponse(safe_next(next, "/"), status_code=303)
 
 
 @app.get("/logout")
 def logout(request: Request):
-    # Misafir oyuncu listesi (guest_id) çıkışta kaybolmasın
+    # Demoda oluşturulan kendi ligleri (guest_id) çıkışta kaybolmasın
     request.session.pop("user_id", None)
+    request.session.pop("active_league", None)
     return RedirectResponse("/", status_code=303)
+
+
+@app.get("/lang/{code}")
+def set_lang(code: str, next: str = "/"):
+    response = RedirectResponse(safe_next(next, "/"), status_code=303)
+    if code in LANGUAGES:
+        response.set_cookie(LANG_COOKIE, code, max_age=60 * 60 * 24 * 365, samesite="lax",
+                            secure=settings.secure_cookies)
+    return response
 
 
 # --- JSON API (ileride mobil uygulama da bunu kullanacak) ------------------
@@ -297,12 +478,15 @@ def api_me(user: User = Depends(require_user)):
 
 @app.get("/api/leagues")
 def api_leagues(user: User = Depends(require_user), db: Session = Depends(get_db)):
-    return _api(lambda: provider_for(db, user).leagues())
+    p = provider_for(db, user)
+    return _api(p.leagues) if p else []
 
 
 @app.get("/api/leagues/{league_key}")
 def api_league(league_key: str, user: User = Depends(require_user), db: Session = Depends(get_db)):
     p = provider_for(db, user)
+    if p is None:
+        raise HTTPException(404, "Yahoo hesabı bağlı değil.")
     return _api(lambda: {**p.league_detail(league_key), "roster": p.my_roster(league_key)})
 
 
@@ -325,26 +509,36 @@ def api_players(days: int = 7, q: str = "", db: Session = Depends(get_db)):
     return nba.search_players(db, q, days) if q.strip() else nba.leaders(db, days)
 
 
-@app.get("/api/my/players")
-def api_my_players(request: Request, days: int = 7, user: User | None = Depends(current_user),
+@app.get("/api/my/leagues")
+def api_my_leagues(request: Request, days: int = 7, user: User = Depends(require_user),
                    db: Session = Depends(get_db)):
-    owner = picker(request, db, user)
-    return nba.my_players(db, owner, days) if owner else {"players": []}
+    """Kullanıcının kendi ligleri ve oyuncuları (Yahoo ligleri için /api/leagues)."""
+    owner = list_owner(request, db, user)
+    return {"leagues": [
+        {"id": lg.id, "name": lg.name,
+         **nba.players_report(db, [{"player_id": p.player_id} for p in lg.picks], days)}
+        for lg in (owner.my_leagues if owner else [])
+    ]}
 
 
-@app.post("/api/my/players/{player_id}")
-def api_my_add(player_id: str, request: Request, user: User | None = Depends(current_user),
-               db: Session = Depends(get_db)):
-    nba.add_pick(db, picker(request, db, user, create=True), player_id)
+def _api_league(request: Request, db: Session, user: User, league_id: int) -> MyLeague:
+    league = own_league(db, list_owner(request, db, user), league_id)
+    if league is None:
+        raise HTTPException(404, "Lig bulunamadı.")
+    return league
+
+
+@app.post("/api/my/leagues/{league_id}/players/{player_id}")
+def api_my_add(league_id: int, player_id: str, request: Request,
+               user: User = Depends(require_user), db: Session = Depends(get_db)):
+    nba.add_pick(db, _api_league(request, db, user, league_id), player_id)
     return {"ok": True}
 
 
-@app.delete("/api/my/players/{player_id}")
-def api_my_remove(player_id: str, request: Request, user: User | None = Depends(current_user),
-                  db: Session = Depends(get_db)):
-    owner = picker(request, db, user)
-    if owner:
-        nba.remove_pick(db, owner, player_id)
+@app.delete("/api/my/leagues/{league_id}/players/{player_id}")
+def api_my_remove(league_id: int, player_id: str, request: Request,
+                  user: User = Depends(require_user), db: Session = Depends(get_db)):
+    nba.remove_pick(db, _api_league(request, db, user, league_id), player_id)
     return {"ok": True}
 
 

@@ -33,9 +33,16 @@ Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
   servisi (`espn.py`). ESPN'e özgü yapı `espn.py` dışına çıkmaz; kaynak
   `source.py`'den değiştirilir. CANLI'da herkese açılmadan önce lisanslı
   kaynağa geçilmesi gerektiği proje sahibine söylendi.
-- Oyuncu seçimleri (`Pick`) Yahoo kullanıcısına ya da çereze bağlı misafir
-  kaydına (`User.is_guest`) aittir; demo hesabı ortak olduğu için demo
-  kullanıcısının seçimleri de misafir kaydına yazılır.
+- Oyuncularım (`/myplayers`) lig bazlıdır. Yahoo'ya bağlı kullanıcının
+  oyuncuları Yahoo kadrosundan gelir (isimden ESPN oyuncusuyla eşleştirilir,
+  `nba.match_roster`). Yahoo'ya bağlı olmayan giriş yapmış kullanıcı kendi
+  liglerini (`MyLeague`) oluşturup oyuncu seçer (`LeaguePick`). Demo hesabı
+  ortak olduğu için demoya girenin kendi ligleri çereze bağlı misafir kaydına
+  (`User.is_guest`) yazılır. Eski `picks` tablosu kullanılmıyor. Giriş
+  yapmamış ziyaretçi oyuncu seçemez.
+- Arayüz metinleri `{{ _("Türkçe metin") }}` ile yazılır (`app/i18n.py`);
+  şablon makroları `import ... with context` ile alınır. EN çevirileri
+  henüz yok, EN seçilince Türkçe görünür.
 - Şema değişikliği: migration aracı yok; `create_all` sadece yeni tablo
   oluşturur. Var olan tabloya sütun eklenecekse önce Alembic kurulmalı
   (Neon'daki veri kalıcı).
@@ -53,7 +60,10 @@ Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
   örnek açılır:
   `BASE_URL=http://localhost:8081 python -m uvicorn app.main:app --port 8081`
 - Hızlı kontrol için `fastapi.testclient.TestClient` ile bütün sayfalar
-  demo girişiyle gezilir.
+  demo girişiyle gezilir. Oturum çerezi HTTPS'e bağlı olduğundan
+  `TestClient(app, base_url="https://testserver")` kullanılır.
+- Görsel kontrol için `.claude/launch.json` içinde `preview-8081` tanımlı
+  (yerel dosya, git'e girmez).
 
 ## Yahoo durumu
 

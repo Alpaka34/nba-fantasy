@@ -6,7 +6,20 @@ Süreç için bkz. [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md).
 
 Henüz CANLI'ya alınmamış, onay bekleyen değişiklikler.
 
-(Şu an yok.)
+- **Ana sayfa:** Maçlar ve Oyuncular sekmeli tek kutu. Maçlar sekmesinde günün
+  maçları (gün değiştirilebilir), Oyuncular sekmesinde son 7 / 14 günün en iyi 10'u
+- **Üst menü:** yeni tasarım; sağ üstte dil seçimi (TR / EN) ve "Giriş yap"
+  düğmesi, giriş yapınca hesap menüsü. EN seçilse de metinler şimdilik Türkçe;
+  İngilizce çeviri altyapısı hazır (`app/i18n.py`)
+- **Giriş sayfası** (`/login`): Yahoo ile giriş ve demo hesabı; girişten sonra
+  kullanıcı kaldığı sayfaya döner
+- **Oyuncularım** yeni adresi `/myplayers` (eski `/my` yönlendirilir). Her lig
+  bir sekme: Yahoo (veya demo) liglerinin kadrosu otomatik gelir; Yahoo'ya bağlı
+  olmayan kullanıcı kendi liglerini oluşturur, adını değiştirir, siler ve her
+  lige ayrı oyuncu seçer
+- Oyuncu seçmek artık giriş gerektiriyor; giriş yapmamış ziyaretçi Oyuncularım'da
+  bilgilendirme ve giriş bağlantısı görür, ☆ giriş sayfasına götürür
+- JSON API: `/api/my/players` yerine `/api/my/leagues` (lig bazlı)
 
 <!-- CANLI'ya alınan sürümler bu satırın altına eklenir, en yenisi üstte. -->
 

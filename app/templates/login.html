@@ -1,0 +1,23 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Giriş yap") }} · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<section class="auth">
+  <div class="card authcard">
+    <h1>{{ _("Giriş yap") }}</h1>
+    <p class="muted">{{ _("Oyuncularınızı seçmek ve liglerinizi takip etmek için giriş yapın.") }}</p>
+
+    {% if error %}<p class="alert">{{ error }}</p>{% endif %}
+
+    <a class="btn block yahoo" href="/auth/yahoo?next={{ next | urlencode }}">
+      <span class="ylogo" aria-hidden="true">Y!</span>{{ _("Yahoo ile giriş yap") }}
+    </a>
+    <p class="muted small">{{ _("Yahoo Fantasy liglerinizdeki kadronuz otomatik gelir.") }}</p>
+
+    {% if settings.demo_mode %}
+      <div class="divider"><span>{{ _("veya") }}</span></div>
+      <a class="btn block" href="/auth/demo?next={{ next | urlencode }}">{{ _("Demo hesabıyla dene") }}</a>
+      <p class="muted small">{{ _("Örnek bir Yahoo ligiyle ve kendi oluşturacağınız liglerle siteyi deneyin.") }}</p>
+    {% endif %}
+  </div>
+</section>
+{% endblock %}

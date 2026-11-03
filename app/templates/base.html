@@ -1,5 +1,5 @@
 <!doctype html>
-<html lang="tr">
+<html lang="{{ lang }}">
 <head>
   <meta charset="utf-8">
   <meta name="viewport" content="width=device-width, initial-scale=1">
@@ -9,30 +9,67 @@
 <body>
   {% if settings.app_env != "canli" %}
     <div class="env-bar env-{{ settings.app_env }}">
-      {{ "UAT test ortamı" if settings.app_env == "uat" else "Yerel geliştirme" }} · v{{ version }}
+      {{ _("UAT test ortamı") if settings.app_env == "uat" else _("Yerel geliştirme") }} · v{{ version }}
     </div>
   {% endif %}
   {% set path = request.url.path %}
   <header class="topbar">
-    <a class="brand" href="/">🏀 {{ settings.app_name }}</a>
-    <nav class="mainnav">
-      <a href="/games" class="{{ 'on' if path.startswith('/games') }}"><span class="ico">🗓</span>Maçlar</a>
-      <a href="/players" class="{{ 'on' if path.startswith('/players') }}"><span class="ico">📊</span>Oyuncular</a>
-      <a href="/my" class="{{ 'on' if path.startswith('/my') }}"><span class="ico">★</span>Oyuncularım</a>
-      <a href="/dashboard" class="{{ 'on' if path.startswith('/dashboard') or path.startswith('/league') }}"><span class="ico">🏆</span>Liglerim</a>
-    </nav>
-    <div class="account">
-      {% if user %}
-        <a href="/profile">{{ user.display_name or "Profil" }}</a>
-        <a href="/logout" class="muted">Çıkış</a>
-      {% else %}
-        <a href="/auth/yahoo">Yahoo ile bağlan</a>
-      {% endif %}
+    <div class="topbar-inner">
+      <a class="brand" href="/"><span class="logo" aria-hidden="true">🏀</span>{{ settings.app_name }}</a>
+
+      <nav class="mainnav" aria-label="{{ _('Ana menü') }}">
+        <a href="/games" class="{{ 'on' if path.startswith('/games') }}"><span class="ico">🗓</span>{{ _("Maçlar") }}</a>
+        <a href="/players" class="{{ 'on' if path.startswith('/players') }}"><span class="ico">📊</span>{{ _("Oyuncular") }}</a>
+        <a href="/myplayers" class="{{ 'on' if path.startswith('/myplayers') }}"><span class="ico">★</span>{{ _("Oyuncularım") }}</a>
+        <a href="/dashboard" class="{{ 'on' if path.startswith('/dashboard') or path.startswith('/league') }}"><span class="ico">🏆</span>{{ _("Liglerim") }}</a>
+      </nav>
+
+      <div class="account">
+        <details class="dropdown">
+          <summary class="chip" aria-label="{{ _('Dil seçimi') }}">
+            <svg class="i" viewBox="0 0 24 24" aria-hidden="true"><circle cx="12" cy="12" r="9"/><path d="M3 12h18M12 3c2.5 2.7 3.8 5.7 3.8 9s-1.3 6.3-3.8 9c-2.5-2.7-3.8-5.7-3.8-9S9.5 5.7 12 3z"/></svg>
+            <span>{{ lang | upper }}</span>
+            <svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+          </summary>
+          <div class="menu" role="menu">
+            <div class="menu-title">{{ _("Dil") }}</div>
+            {% for code, name in languages.items() %}
+              <a role="menuitem" href="/lang/{{ code }}?next={{ here | urlencode }}" class="{{ 'on' if code == lang }}">
+                <span class="code">{{ code | upper }}</span><span class="grow">{{ name }}</span>
+                {% if code == lang %}<span aria-hidden="true">✓</span>{% endif %}
+              </a>
+            {% endfor %}
+          </div>
+        </details>
+
+        {% if user %}
+          {% set uname = user.display_name or _("Hesabım") %}
+          <details class="dropdown">
+            <summary class="chip user">
+              <span class="avatar" aria-hidden="true">{{ uname[:1] | upper }}</span>
+              <span class="uname">{{ uname }}</span>
+              <svg class="i chev" viewBox="0 0 24 24" aria-hidden="true"><path d="m6 9 6 6 6-6"/></svg>
+            </summary>
+            <div class="menu right" role="menu">
+              <div class="menu-title">
+                {% if user.is_demo %}{{ _("Demo hesabı") }}{% elif user.token %}{{ _("Yahoo hesabı bağlı") }}{% else %}{{ _("Site hesabı") }}{% endif %}
+              </div>
+              <a role="menuitem" href="/myplayers">{{ _("Oyuncularım") }}</a>
+              <a role="menuitem" href="/dashboard">{{ _("Liglerim") }}</a>
+              <a role="menuitem" href="/profile">{{ _("Profil") }}</a>
+              <hr>
+              <a role="menuitem" href="/logout">{{ _("Çıkış yap") }}</a>
+            </div>
+          </details>
+        {% elif path != "/login" %}
+          <a class="btn primary sm" href="/login?next={{ here | urlencode }}">{{ _("Giriş yap") }}</a>
+        {% endif %}
+      </div>
     </div>
   </header>
 
   {% if source == "demo" %}
-    <div class="banner">Örnek veri gösteriliyor. Rakamlar gerçek değildir.</div>
+    <div class="banner">{{ _("Örnek veri gösteriliyor. Rakamlar gerçek değildir.") }}</div>
   {% endif %}
 
   <main>
@@ -43,11 +80,23 @@
     {% if source == "yahoo" %}
       Fantasy data provided by <a href="https://sports.yahoo.com/fantasy/" rel="noopener">Yahoo Fantasy</a>
     {% elif source == "nba" %}
-      NBA verileri: {{ nba_source }}
+      {{ _("NBA verileri") }}: {{ nba_source }}
     {% else %}
       {{ settings.app_name }}
     {% endif %}
     · v{{ version }}
   </footer>
+
+  <script>
+    // Açık menüler dışarı tıklanınca veya Esc ile kapanır
+    document.addEventListener("click", (e) => {
+      document.querySelectorAll("details.dropdown[open]").forEach((d) => {
+        if (!d.contains(e.target)) d.removeAttribute("open");
+      });
+    });
+    document.addEventListener("keydown", (e) => {
+      if (e.key === "Escape") document.querySelectorAll("details.dropdown[open]").forEach((d) => d.removeAttribute("open"));
+    });
+  </script>
 </body>
 </html>

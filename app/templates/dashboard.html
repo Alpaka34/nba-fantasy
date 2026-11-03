@@ -1,19 +1,27 @@
 {% extends "base.html" %}
-{% block title %}Liglerim · {{ settings.app_name }}{% endblock %}
+{% block title %}{{ _("Liglerim") }} · {{ settings.app_name }}{% endblock %}
 {% block content %}
-<h1>Liglerim</h1>
+<h1>{{ _("Liglerim") }}</h1>
 
 {% if error %}
   <p class="alert">{{ error }}</p>
+{% elif source is none %}
+  <section class="empty-state">
+    <div class="empty-icon" aria-hidden="true">🏆</div>
+    <h2>{{ _("Yahoo hesabınız bağlı değil") }}</h2>
+    <p>{{ _("Yahoo Fantasy liglerinizin puan durumu ve eşleşmeleri için Yahoo hesabınızı bağlayın. Kendi oluşturduğunuz ligler Oyuncularım sayfasında.") }}</p>
+    <a class="btn primary" href="/auth/yahoo?next=/dashboard">{{ _("Yahoo ile bağlan") }}</a>
+    <a class="btn" href="/myplayers">{{ _("Oyuncularım") }}</a>
+  </section>
 {% elif not leagues %}
-  <p class="muted">Bu hesapta NBA fantasy ligi bulunamadı.</p>
+  <p class="muted">{{ _("Bu hesapta NBA fantasy ligi bulunamadı.") }}</p>
 {% else %}
   <div class="grid3">
     {% for lg in leagues %}
       <a class="card link" href="/league/{{ lg.league_key }}">
         <h3>{{ lg.name }}</h3>
-        <p class="muted">Sezon {{ lg.season }} · {{ lg.num_teams }} takım
-          {% if lg.current_week %} · Hafta {{ lg.current_week }}{% endif %}</p>
+        <p class="muted">{{ _("Sezon") }} {{ lg.season }} · {{ lg.num_teams }} {{ _("takım") }}
+          {% if lg.current_week %} · {{ _("Hafta") }} {{ lg.current_week }}{% endif %}</p>
       </a>
     {% endfor %}
   </div>

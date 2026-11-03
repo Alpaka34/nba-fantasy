@@ -6,13 +6,17 @@ from .demo import DemoProvider
 from .yahoo import YahooProvider
 
 
-def provider_for(db: Session, user: User) -> FantasyProvider:
+def provider_for(db: Session, user: User) -> FantasyProvider | None:
     """Kullanıcının lig verisini hangi kaynaktan alacağımızı seçer.
 
-    Ligden bağımsız NBA verisi (maçlar, oyuncular) app/nba/ altındadır.
+    Yahoo'ya bağlı olmayan kullanıcının fantasy ligi yoktur (None); onun
+    kendi oluşturduğu ligler veritabanındadır (MyLeague). Ligden bağımsız
+    NBA verisi (maçlar, oyuncular) app/nba/ altındadır.
     """
     if user.is_demo:
         return DemoProvider()
+    if user.token is None:
+        return None
     return YahooProvider(db, user)
 
 

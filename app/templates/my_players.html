@@ -1,60 +1,158 @@
 {% extends "base.html" %}
-{% from "_macros.html" import player_cell, pick_button, period_tabs, shooting %}
-{% block title %}Oyuncularım · {{ settings.app_name }}{% endblock %}
+{% from "_macros.html" import player_cell, pick_button, period_tabs, shooting with context %}
+{% block title %}{{ _("Oyuncularım") }} · {{ settings.app_name }}{% endblock %}
+
 {% block content %}
-<h1>Oyuncularım</h1>
+{% macro new_league_form(label) -%}
+  <form method="post" action="/myplayers/leagues" class="inline-form">
+    <input name="name" maxlength="60" placeholder="{{ _('Lig adı (ör. Ofis Ligi)') }}" aria-label="{{ _('Lig adı') }}">
+    <button class="btn primary" type="submit">{{ label }}</button>
+  </form>
+{%- endmacro %}
+<h1>{{ _("Oyuncularım") }}</h1>
 
-{% if not data or not data.players %}
-  <div class="card narrow">
-    <p>Henüz oyuncu seçmediniz. <a href="/players">Oyuncular</a> sayfasından veya bir maçın
-      kutu skorundan ☆ ile istediğiniz oyuncuları ekleyin.</p>
-    <p class="muted small">Seçimleriniz bu tarayıcıda saklanır, üyelik gerekmez.
-      Yahoo ile bağlanırsanız hesabınıza taşınır.</p>
-  </div>
+{% if not user %}
+  <section class="empty-state">
+    <div class="empty-icon" aria-hidden="true">★</div>
+    <h2>{{ _("Oyuncularınızı seçmek için giriş yapın") }}</h2>
+    <p>{{ _("Giriş yaptığınızda seçtiğiniz oyuncuların detaylı istatistiklerini burada görebilirsiniz. Birden çok ligde oynuyorsanız her ligin oyuncuları ayrı görünür.") }}</p>
+    <p class="muted">{{ _("Yahoo hesabınızı bağlarsanız lig kadrolarınız otomatik gelir.") }}</p>
+    <a class="btn primary" href="/login?next={{ '/myplayers' | urlencode }}">{{ _("Giriş yap") }}</a>
+  </section>
 {% else %}
-  {{ period_tabs(periods, data.days, "/my?") }}
-  <p class="muted small">{{ data.start }} – {{ data.end }} · {{ data.players | length }} oyuncu ·
-    toplam <strong>{{ data.total_fpts }}</strong> FP</p>
+  {% if error %}<p class="alert">{{ error }}</p>{% endif %}
 
-  <div class="table-wrap">
-    <table>
-      <thead><tr>
-        <th></th><th>Oyuncu</th><th class="num">MS</th><th class="num">SAY</th><th class="num">RIB</th>
-        <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
-        <th class="num">SA</th><th class="num">SR</th><th class="num">FP</th><th class="num">FP/M</th>
-        <th>Son maç</th>
-      </tr></thead>
-      <tbody>
-        {% for p in data.players %}
-          <tr>
-            <td>{{ pick_button(p.player_id, true, "/my?days=" ~ data.days) }}</td>
-            <td>{{ player_cell(p) }}</td>
-            <td class="num">{{ p.games }}</td><td class="num">{{ p.pts }}</td><td class="num">{{ p.reb }}</td>
-            <td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td><td class="num">{{ p.blk }}</td>
-            <td class="num">{{ p.tov }}</td>
-            <td class="num">{{ shooting(p.fgm, p.fga) }}</td><td class="num">{{ shooting(p.ftm, p.fta) }}</td>
-            <td class="num"><strong>{{ p.fpts }}</strong></td><td class="num">{{ p.fpts_avg }}</td>
-            <td class="small">
-              {% if p.last_game %}
-                <a href="/games/{{ p.last_game.game_id }}">{{ p.last_game.date[5:] | replace("-", ".") }}</a>:
-                {{ p.last_game.pts }} sy, {{ p.last_game.reb }} rb, {{ p.last_game.ast }} as
-              {% else %}<span class="muted">–</span>{% endif %}
-            </td>
-          </tr>
-        {% endfor %}
-      </tbody>
-      <tfoot><tr>
-        <td></td><td><strong>Toplam</strong></td><td></td>
-        <td class="num">{{ data.totals.pts }}</td><td class="num">{{ data.totals.reb }}</td>
-        <td class="num">{{ data.totals.ast }}</td><td class="num">{{ data.totals.stl }}</td>
-        <td class="num">{{ data.totals.blk }}</td><td class="num">{{ data.totals.tov }}</td>
-        <td class="num">{{ shooting(data.totals.fgm, data.totals.fga) }}</td>
-        <td class="num">{{ shooting(data.totals.ftm, data.totals.fta) }}</td>
-        <td class="num"><strong>{{ data.total_fpts }}</strong></td><td></td><td></td>
-      </tr></tfoot>
-    </table>
-  </div>
-  <p><a class="btn" href="/players">+ Oyuncu ekle</a></p>
+  {% if tabs %}
+    <nav class="leaguetabs" aria-label="{{ _('Ligler') }}">
+      {% for t in tabs %}
+        <a class="ltab {{ 'on' if current and t.key == current.key }}" href="/myplayers?league={{ t.key | urlencode }}&days={{ days }}">
+          <span>{{ t.name }}</span>
+          {% if t.kind == "yahoo" %}<span class="badge yahoo">Yahoo</span>
+          {% elif t.kind == "demo" %}<span class="badge">{{ _("Demo") }}</span>{% endif %}
+        </a>
+      {% endfor %}
+      {% if can_own and tabs | selectattr("kind", "equalto", "own") | list | length < max_leagues %}
+        <details class="ltab-new dropdown">
+          <summary class="ltab add">+ {{ _("Yeni lig") }}</summary>
+          <div class="menu pad">{{ new_league_form(_("Oluştur")) }}</div>
+        </details>
+      {% endif %}
+    </nav>
+  {% endif %}
+
+  {% if not tabs %}
+    <section class="empty-state">
+      <div class="empty-icon" aria-hidden="true">🏆</div>
+      <h2>{{ _("Henüz bir liginiz yok") }}</h2>
+      {% if can_own %}
+        <p>{{ _("Oynadığınız lig için bir lig oluşturun, sonra o ligdeki oyuncularınızı seçin. Her lig için ayrı oyuncu listesi tutabilirsiniz.") }}</p>
+        {{ new_league_form(_("Lig oluştur")) }}
+      {% else %}
+        <p>{{ _("Yahoo hesabınızda NBA fantasy ligi bulunamadı.") }}</p>
+      {% endif %}
+    </section>
+  {% elif current %}
+    <section class="leaguepanel">
+      <div class="panelhead">
+        <div>
+          <div class="paneltitle">{{ current.name }}</div>
+          <div class="muted small">
+            {% if current.kind == "yahoo" %}{{ _("Kadronuz Yahoo'dan otomatik geliyor.") }}
+            {% elif current.kind == "demo" %}{{ _("Örnek lig: Yahoo'ya bağlandığınızda kadronuz böyle otomatik gelir.") }}
+            {% else %}{{ _("Kendi oluşturduğunuz lig. Oyuncuları aşağıdan arayıp ekleyin.") }}{% endif %}
+          </div>
+        </div>
+        {% if data %}{{ period_tabs(periods, data.days, "/myplayers?league=" ~ (current.key | urlencode) ~ "&") }}{% endif %}
+      </div>
+
+      {% if current.kind == "own" %}
+        <form class="search" method="get" action="/myplayers">
+          <input type="hidden" name="league" value="{{ current.key }}">
+          <input type="hidden" name="days" value="{{ days }}">
+          <input name="q" value="{{ q }}" placeholder="{{ _('Bu lige oyuncu ekle: isimle ara (ör. Şengün)') }}" autocomplete="off">
+          <button class="btn primary" type="submit">{{ _("Ara") }}</button>
+          {% if q %}<a class="btn" href="/myplayers?league={{ current.key | urlencode }}&days={{ days }}">{{ _("Kapat") }}</a>{% endif %}
+        </form>
+        {% if search %}
+          <div class="searchresults">
+            {% for p in search.players %}
+              <div class="sr-row">
+                {{ player_cell(p) }}
+                <span class="muted small grow">{{ p.games }} {{ _("maç") }} · {{ p.fpts }} FP</span>
+                {{ pick_button(p.player_id, pick, here, labelled=true) }}
+              </div>
+            {% else %}
+              <p class="muted">{{ _("Bu isimde oyuncu bulunamadı.") }}</p>
+            {% endfor %}
+          </div>
+        {% endif %}
+      {% endif %}
+
+      {% if data and data.players %}
+        <p class="muted small">{{ data.start }} – {{ data.end }} · {{ data.players | length }} {{ _("oyuncu") }} ·
+          {{ _("toplam") }} <strong>{{ data.total_fpts }}</strong> FP</p>
+        {% set roster = current.kind != "own" %}
+        <div class="table-wrap">
+          <table>
+            <thead><tr>
+              <th>{{ _("Poz.") if roster else "" }}</th><th>{{ _("Oyuncu") }}</th>
+              <th class="num">MS</th><th class="num">SAY</th><th class="num">RIB</th>
+              <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
+              <th class="num">SA</th><th class="num">SR</th><th class="num">FP</th><th class="num">FP/M</th>
+              <th>{{ _("Son maç") }}</th>
+            </tr></thead>
+            <tbody>
+              {% for p in data.players %}
+                <tr class="{{ 'bench' if p.slot in ('BN', 'IL', 'IL+') }}">
+                  <td>{% if roster %}<span class="slot">{{ p.slot }}</span>{% else %}{{ pick_button(p.player_id, pick, here) }}{% endif %}</td>
+                  <td>{{ player_cell(p) }}
+                    {% if not p.matched %}<div class="muted small">{{ _("İstatistik bulunamadı") }}</div>{% endif %}</td>
+                  <td class="num">{{ p.games }}</td><td class="num">{{ p.pts }}</td><td class="num">{{ p.reb }}</td>
+                  <td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td><td class="num">{{ p.blk }}</td>
+                  <td class="num">{{ p.tov }}</td>
+                  <td class="num">{{ shooting(p.fgm, p.fga) }}</td><td class="num">{{ shooting(p.ftm, p.fta) }}</td>
+                  <td class="num"><strong>{{ p.fpts }}</strong></td><td class="num">{{ p.fpts_avg }}</td>
+                  <td class="small">
+                    {% if p.last_game %}
+                      <a href="/games/{{ p.last_game.game_id }}">{{ p.last_game.date[5:] | replace("-", ".") }}</a>:
+                      {{ p.last_game.pts }} sy, {{ p.last_game.reb }} rb, {{ p.last_game.ast }} as
+                    {% else %}<span class="muted">–</span>{% endif %}
+                  </td>
+                </tr>
+              {% endfor %}
+            </tbody>
+            <tfoot><tr>
+              <td></td><td><strong>{{ _("Toplam") }}</strong></td><td></td>
+              <td class="num">{{ data.totals.pts }}</td><td class="num">{{ data.totals.reb }}</td>
+              <td class="num">{{ data.totals.ast }}</td><td class="num">{{ data.totals.stl }}</td>
+              <td class="num">{{ data.totals.blk }}</td><td class="num">{{ data.totals.tov }}</td>
+              <td class="num">{{ shooting(data.totals.fgm, data.totals.fga) }}</td>
+              <td class="num">{{ shooting(data.totals.ftm, data.totals.fta) }}</td>
+              <td class="num"><strong>{{ data.total_fpts }}</strong></td><td></td><td></td>
+            </tr></tfoot>
+          </table>
+        </div>
+      {% elif data %}
+        <p class="muted empty center">{{ _("Bu ligde henüz oyuncu yok. Yukarıdan arayıp ekleyin ya da Oyuncular sayfasında ☆ ile seçin.") if current.kind == "own" else _("Bu ligde kadro bulunamadı.") }}</p>
+      {% endif %}
+
+      {% if current.kind == "own" %}
+        <details class="manage">
+          <summary>{{ _("Ligi düzenle") }}</summary>
+          <div class="manage-body">
+            <form method="post" action="/myplayers/leagues/{{ current.id }}/rename" class="inline-form">
+              <input name="name" maxlength="60" value="{{ current.name }}" aria-label="{{ _('Lig adı') }}">
+              <button class="btn" type="submit">{{ _("Adını değiştir") }}</button>
+            </form>
+            <form method="post" action="/myplayers/leagues/{{ current.id }}/delete"
+                  onsubmit="return confirm('{{ _('Bu lig ve seçtiğiniz oyuncular silinsin mi?') }}')">
+              <button class="btn danger" type="submit">{{ _("Ligi sil") }}</button>
+            </form>
+          </div>
+        </details>
+      {% endif %}
+    </section>
+  {% endif %}
+  {% include "_legend.html" %}
 {% endif %}
-{% include "_legend.html" %}
 {% endblock %}

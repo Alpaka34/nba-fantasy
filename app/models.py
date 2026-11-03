@@ -1,6 +1,4 @@
-from datetime import datetime
-
-from datetime import date
+from datetime import date, datetime
 
 from sqlalchemy import ForeignKey, String, Text, UniqueConstraint
 from sqlalchemy.orm import Mapped, mapped_column, relationship
@@ -16,14 +14,17 @@ class User(Base):
     yahoo_guid: Mapped[str | None] = mapped_column(String(64), unique=True)
     display_name: Mapped[str] = mapped_column(String(80), default="")
     is_demo: Mapped[bool] = mapped_column(default=False)
-    # Yahoo'ya bağlanmadan oyuncu seçen ziyaretçi (tarayıcı çerezine bağlı)
+    # Demo hesabı ortak olduğu için demoya girenin kendi ligleri tarayıcı
+    # çerezine bağlı bu kayıtta tutulur. Misafir kaydı giriş sayılmaz.
     is_guest: Mapped[bool] = mapped_column(default=False)
     created_at: Mapped[datetime] = mapped_column(default=utcnow)
 
     token: Mapped["YahooToken | None"] = relationship(
         back_populates="user", uselist=False, cascade="all, delete-orphan"
     )
-    picks: Mapped[list["Pick"]] = relationship(cascade="all, delete-orphan")
+    my_leagues: Mapped[list["MyLeague"]] = relationship(
+        cascade="all, delete-orphan", order_by="MyLeague.id"
+    )
 
 
 class YahooToken(Base):
@@ -112,13 +113,31 @@ class PlayerGameLine(Base):
     fta: Mapped[int] = mapped_column(default=0)
 
 
-class Pick(Base):
-    """Kullanıcının (veya misafirin) takip ettiği oyuncu."""
+# --- Yahoo'ya bağlı olmayan kullanıcının kendi ligleri ---------------------
+# Yahoo'ya bağlı kullanıcının oyuncuları Yahoo kadrosundan gelir, burada tutulmaz.
+# Eski "picks" tablosu kullanılmıyor; lig ayrımı için yeni tablolar eklendi
+# (create_all var olan tabloya sütun ekleyemiyor).
 
-    __tablename__ = "picks"
-    __table_args__ = (UniqueConstraint("user_id", "player_id"),)
+class MyLeague(Base):
+    __tablename__ = "my_leagues"
 
     id: Mapped[int] = mapped_column(primary_key=True)
     user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), index=True)
+    name: Mapped[str] = mapped_column(String(60))
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    picks: Mapped[list["LeaguePick"]] = relationship(
+        cascade="all, delete-orphan", order_by="LeaguePick.id"
+    )
+
+
+class LeaguePick(Base):
+    """Bir ligde seçilen oyuncu."""
+
+    __tablename__ = "league_picks"
+    __table_args__ = (UniqueConstraint("league_id", "player_id"),)
+
+    id: Mapped[int] = mapped_column(primary_key=True)
+    league_id: Mapped[int] = mapped_column(ForeignKey("my_leagues.id"), index=True)
     player_id: Mapped[str] = mapped_column(String(20))
     created_at: Mapped[datetime] = mapped_column(default=utcnow)

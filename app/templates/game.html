@@ -1,5 +1,5 @@
 {% extends "base.html" %}
-{% from "_macros.html" import game_status, player_cell, pick_button, shooting %}
+{% from "_macros.html" import game_status, player_cell, pick_button, pick_note, shooting with context %}
 {% block title %}{{ game.away.abbr }} @ {{ game.home.abbr }} · {{ settings.app_name }}{% endblock %}
 {% block content %}
 <p><a href="/games?date={{ game.date }}" class="muted">← Maçlar</a></p>
@@ -19,20 +19,21 @@
 {% if game.state == "pre" %}
   <p class="muted center">Maç henüz başlamadı. Başlama saati {{ game.start_local_date }} {{ game.start_local }} (TR).</p>
 {% else %}
+  {{ pick_note(pick) }}
   {% for side in ("away", "home") %}
     {% set t = game[side] %}
     <h2>{{ t.name or t.abbr }}</h2>
     <div class="table-wrap">
       <table>
         <thead><tr>
-          <th></th><th>Oyuncu</th><th class="num">DK</th><th class="num">SAY</th><th class="num">RIB</th>
+          {% if pick.mode != "off" %}<th></th>{% endif %}<th>Oyuncu</th><th class="num">DK</th><th class="num">SAY</th><th class="num">RIB</th>
           <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
           <th class="num">SA</th><th class="num">3S</th><th class="num">SR</th><th class="num">FP</th>
         </tr></thead>
         <tbody>
           {% for p in t.players %}
             <tr class="{{ 'bench' if not p.starter }}">
-              <td>{{ pick_button(p.player_id, p.player_id in picked, request.url.path) }}</td>
+              {% if pick.mode != "off" %}<td>{{ pick_button(p.player_id, pick, here) }}</td>{% endif %}
               <td>{{ player_cell(p) }}</td>
               <td class="num">{{ p.minutes }}</td><td class="num"><strong>{{ p.pts }}</strong></td>
               <td class="num">{{ p.reb }}</td><td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td>

@@ -1,17 +1,21 @@
+{# Bu dosyadaki makrolar _() kullandığı için "import ... with context" ile alınır. #}
+
 {% macro game_status(g) -%}
   {%- if g.state == "pre" -%}
     <span class="status">{{ g.start_local }}</span>
   {%- elif g.state == "in" -%}
-    <span class="status live">CANLI · {{ g.detail }}</span>
+    <span class="status live">{{ _("CANLI") }} · {{ g.detail }}</span>
   {%- else -%}
-    <span class="status">Bitti{{ " (UZ)" if "OT" in g.detail }}</span>
+    <span class="status">{{ _("Bitti") }}{{ " (" ~ _("UZ") ~ ")" if "OT" in g.detail }}</span>
   {%- endif -%}
 {%- endmacro %}
 
 {% macro player_cell(p) -%}
   <div class="player">
-    <img class="headshot" src="{{ p.headshot }}" alt="" loading="lazy" width="48" height="35"
-         onerror="this.style.visibility='hidden'">
+    {% if p.headshot %}
+      <img class="headshot" src="{{ p.headshot }}" alt="" loading="lazy" width="48" height="35"
+           onerror="this.style.visibility='hidden'">
+    {% else %}<span class="headshot"></span>{% endif %}
     <div>
       <div class="pname">{{ p.name }}
         {%- if p.injury %} <span class="pill warn">{{ p.injury }}</span>{% endif %}</div>
@@ -20,13 +24,36 @@
   </div>
 {%- endmacro %}
 
-{% macro pick_button(player_id, is_picked, next) -%}
-  <form method="post" action="{{ '/my/remove' if is_picked else '/my/add' }}" class="inline">
-    <input type="hidden" name="player_id" value="{{ player_id }}">
-    <input type="hidden" name="next" value="{{ next }}">
-    <button class="pick {{ 'on' if is_picked }}" type="submit"
-            title="{{ 'Oyuncularımdan çıkar' if is_picked else 'Oyuncularıma ekle' }}">{{ "★" if is_picked else "☆" }}</button>
-  </form>
+{# pick: main.pick_context() sonucu. mode = login | off | pick #}
+{% macro pick_button(player_id, pick, next, labelled=false) -%}
+  {%- if pick.mode == "login" -%}
+    <a class="pick" href="/login?next={{ next | urlencode }}" title="{{ _('Oyuncu seçmek için giriş yapın') }}">☆</a>
+  {%- elif pick.mode == "pick" -%}
+    {% set on = player_id in pick.picked %}
+    <form method="post" action="{{ '/myplayers/remove' if on else '/myplayers/add' }}" class="inline">
+      <input type="hidden" name="player_id" value="{{ player_id }}">
+      {% if pick.league %}<input type="hidden" name="league_id" value="{{ pick.league.id }}">{% endif %}
+      <input type="hidden" name="next" value="{{ next }}">
+      {% if labelled %}
+        <button class="btn sm {{ '' if on else 'primary' }}" type="submit">{{ "✓ " ~ _("Ligde") if on else "+ " ~ _("Ekle") }}</button>
+      {% else %}
+        <button class="pick {{ 'on' if on }}" type="submit"
+                title="{{ _('Ligden çıkar') if on else _('Lige ekle') }}">{{ "★" if on else "☆" }}</button>
+      {% endif %}
+    </form>
+  {%- endif -%}
+{%- endmacro %}
+
+{# ☆ düğmesinin nereye eklediğini anlatan kısa not #}
+{% macro pick_note(pick) -%}
+  {% if pick.mode == "login" %}
+    <p class="note">☆ {{ _("Oyuncu seçmek için") }} <a href="/login?next={{ here | urlencode }}">{{ _("giriş yapın") }}</a>.</p>
+  {% elif pick.mode == "pick" %}
+    <p class="note">☆ {{ _("ile seçtiğiniz oyuncular") }}
+      {% if pick.league %}<a href="/myplayers?league=my-{{ pick.league.id }}"><strong>{{ pick.league.name }}</strong></a> {{ _("ligine eklenir.") }}
+      {% else %}{{ _("yeni bir lige eklenir; ligi Oyuncularım'da yeniden adlandırabilirsiniz.") }}{% endif %}
+    </p>
+  {% endif %}
 {%- endmacro %}
 
 {% macro shooting(made, att) -%}
@@ -36,7 +63,69 @@
 {% macro period_tabs(periods, current, base) -%}
   <div class="tabs">
     {% for d in periods %}
-      <a class="tab {{ 'on' if d == current }}" href="{{ base }}days={{ d }}">Son {{ d }} gün</a>
+      <a class="tab {{ 'on' if d == current }}" href="{{ base }}days={{ d }}">{{ _("Son") }} {{ d }} {{ _("gün") }}</a>
     {% endfor %}
+  </div>
+{%- endmacro %}
+
+{# base: tarih parametresinin ekleneceği adres, ör. "/games?" veya "/?tab=games&" #}
+{% macro daynav(day, prev_day, next_day, base) -%}
+  <div class="daynav">
+    <a class="btn icon" href="{{ base }}date={{ prev_day.isoformat() }}" aria-label="{{ _('Önceki gün') }}">‹</a>
+    <div class="center">
+      <div class="dayname">{{ day.strftime("%d.%m.%Y") }}</div>
+      <div class="muted small">{{ _("ABD saatiyle NBA günü · saatler Türkiye saatidir") }}</div>
+    </div>
+    <a class="btn icon" href="{{ base }}date={{ next_day.isoformat() }}" aria-label="{{ _('Sonraki gün') }}">›</a>
+  </div>
+{%- endmacro %}
+
+{% macro games_grid(games) -%}
+  {% if not games %}
+    <p class="muted center empty">{{ _("Bu gün maç yok.") }}</p>
+  {% else %}
+    <div class="grid3">
+      {% for g in games %}
+        <a class="card link game {{ 'is-live' if g.state == 'in' }}" href="/games/{{ g.id }}">
+          {% for side in ("away", "home") %}
+            {% set t = g[side] %}
+            <div class="gteam {{ 'won' if t.winner }}">
+              <img src="{{ t.logo }}" alt="" width="28" height="28" loading="lazy">
+              <span class="tname">{{ t.name or t.abbr }}</span>
+              <span class="muted small">{{ t.record }}</span>
+              <strong class="score">{{ t.score if t.score is not none and g.state != "pre" else "" }}</strong>
+            </div>
+          {% endfor %}
+          <div class="gfoot">{{ game_status(g) }}</div>
+        </a>
+      {% endfor %}
+    </div>
+  {% endif %}
+{%- endmacro %}
+
+{# Dönem sıralaması tablosu (Oyuncular sayfası ve ana sayfa) #}
+{% macro leaders_table(players, pick, next) -%}
+  <div class="table-wrap">
+    <table>
+      <thead><tr>
+        {% if pick.mode != "off" %}<th></th>{% endif %}<th>#</th><th>{{ _("Oyuncu") }}</th>
+        <th class="num">MS</th><th class="num">SAY</th><th class="num">RIB</th>
+        <th class="num">AST</th><th class="num">TÇ</th><th class="num">BLK</th><th class="num">TK</th>
+        <th class="num">FP</th><th class="num">FP/M</th>
+      </tr></thead>
+      <tbody>
+        {% for p in players %}
+          <tr>
+            {% if pick.mode != "off" %}<td>{{ pick_button(p.player_id, pick, next) }}</td>{% endif %}
+            <td class="muted">{{ loop.index }}</td>
+            <td>{{ player_cell(p) }}</td>
+            <td class="num">{{ p.games }}</td><td class="num">{{ p.pts }}</td><td class="num">{{ p.reb }}</td>
+            <td class="num">{{ p.ast }}</td><td class="num">{{ p.stl }}</td><td class="num">{{ p.blk }}</td>
+            <td class="num">{{ p.tov }}</td><td class="num"><strong>{{ p.fpts }}</strong></td>
+            <td class="num">{{ p.fpts_avg }}</td>
+          </tr>
+        {% endfor %}
+      </tbody>
+    </table>
   </div>
 {%- endmacro %}
