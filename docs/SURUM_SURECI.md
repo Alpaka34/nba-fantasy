@@ -43,7 +43,7 @@ geliştirme ──push──▶ uat ──(Render)──▶ UAT sitesi ──▶
       git push origin main --tags
       git switch uat
       ```
-   5. Render CANLI sitesini günceller. `https://<canli-adres>/healthz` cevabındaki
+   5. Render CANLI sitesini günceller. `https://nba-fantasy-y4ey.onrender.com/healthz` cevabındaki
       `version` alanı yeni sürümü göstermelidir.
 
 `--ff-only` sayesinde `main`'e UAT'de görülmemiş hiçbir şey giremez. Bu komut

@@ -9,8 +9,9 @@ yapılabiliyorsa Claude kendisi çalıştırır.
 Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
 
 - UAT: https://nba-fantasy-uat.onrender.com (Render servisi `nba-fantasy-uat`)
-- CANLI: Render servisi `nba-fantasy`. İlk onaya kadar `main`'de site kodu
-  olmadığı için deploy'u "failed" görünür; bu beklenen bir durum.
+- CANLI: https://nba-fantasy-y4ey.onrender.com (Render servisi `nba-fantasy`;
+  `nba-fantasy.onrender.com` başkasına ait). İlk sürüm v0.2.0, 2026-11-04.
+- Render'da ikisi de "NBA Fantasy" projesinde: UAT ortamı ve Production ortamı.
 
 - Bütün işler `uat` dalında yapılır. **`main`'e doğrudan commit atılmaz.**
 - İş bitince: test et → `CHANGELOG.md` içindeki "UAT'de bekleyenler"e ekle →

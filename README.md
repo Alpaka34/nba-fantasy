@@ -45,7 +45,7 @@ Kaynak tek yerden değişir: `app/nba/source.py`.
 |---|---|---|---|
 | Yerel | çalışma kopyası | https://localhost:8080 | Geliştirme |
 | **UAT** | `uat` | https://nba-fantasy-uat.onrender.com | Onay öncesi test |
-| **CANLI** | `main` | Render: `nba-fantasy` (ilk onaydan sonra; ileride kendi alan adı) | Yayındaki site |
+| **CANLI** | `main` | https://nba-fantasy-y4ey.onrender.com (ileride kendi alan adı) | Yayındaki site |
 
 Bütün geliştirme `uat` dalında yapılır ve oraya gönderilince UAT sitesi
 otomatik güncellenir. UAT'de incelenip **"uygundur"** onayı verilen sürüm
