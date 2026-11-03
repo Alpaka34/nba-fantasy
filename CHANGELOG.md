@@ -6,6 +6,14 @@ Süreç için bkz. [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md).
 
 Henüz CANLI'ya alınmamış, onay bekleyen değişiklikler.
 
+(Şu an yok.)
+
+<!-- CANLI'ya alınan sürümler bu satırın altına eklenir, en yenisi üstte. -->
+
+## v0.2.0 – 2026-11-04
+
+İlk CANLI sürümü.
+
 - Web sitesi iskeleti: giriş sayfası, Liglerim, lig sayfası (puan durumu,
   eşleşmeler, kadro), Haftanın oyuncuları, Profil
 - Kullanıcı başına Yahoo girişi (şifreli token saklama ve otomatik yenileme)
@@ -21,9 +29,3 @@ Henüz CANLI'ya alınmamış, onay bekleyen değişiklikler.
   Yahoo ile bağlanınca hesaba taşınır
 - Telefonda alt menü çubuğu
 - PostgreSQL desteği (`DATABASE_URL`, ör. Neon)
-
-<!-- CANLI'ya alınan sürümler bu satırın altına eklenir, en yenisi üstte:
-
-## v0.2.0 – 2026-11-10
-- ...
--->
