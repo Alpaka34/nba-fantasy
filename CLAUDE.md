@@ -40,6 +40,12 @@ Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
   ortak olduğu için demoya girenin kendi ligleri çereze bağlı misafir kaydına
   (`User.is_guest`) yazılır. Eski `picks` tablosu kullanılmıyor. Giriş
   yapmamış ziyaretçi oyuncu seçemez.
+- Giriş türleri: site hesabı (kullanıcı adı + şifre, `SiteAccount`,
+  `app/accounts.py`; e-posta yok, şifre sıfırlama yok), Yahoo ve ortak demo.
+  Şifreler sadece scrypt özeti olarak saklanır (`app/passwords.py`); düz
+  şifre hiçbir yere yazılmaz ya da loglanmaz. Site hesabına Yahoo bağlanırsa
+  kendi ligleri kalır (`can_own_leagues`). İleride Google girişi ayrı bir
+  giriş yöntemi olarak aynı kullanıcıya eklenecek.
 - Arayüz metinleri `{{ _("Türkçe metin") }}` ile yazılır (`app/i18n.py`);
   şablon makroları `import ... with context` ile alınır. EN çevirileri
   henüz yok, EN seçilince Türkçe görünür.

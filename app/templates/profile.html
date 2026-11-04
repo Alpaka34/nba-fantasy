@@ -1,39 +1,65 @@
 {% extends "base.html" %}
-{% block title %}Profil · {{ settings.app_name }}{% endblock %}
+{% block title %}{{ _("Profil") }} · {{ settings.app_name }}{% endblock %}
 {% block content %}
-<h1>Profil</h1>
+<h1>{{ _("Profil") }}</h1>
 
-{% if saved %}<p class="ok">Kaydedildi.</p>{% endif %}
+{% if saved == "password" %}<p class="ok">{{ _("Şifreniz değiştirildi.") }}</p>
+{% elif saved == "yahoo" %}<p class="ok">{{ _("Yahoo bağlantısı kaldırıldı.") }}</p>
+{% elif saved %}<p class="ok">{{ _("Kaydedildi.") }}</p>{% endif %}
+{% if error %}<p class="alert">{{ error }}</p>{% endif %}
+
+{% if user.account %}
+<section class="card narrow">
+  <h3>{{ _("Hesap") }}</h3>
+  <p class="muted">{{ _("Kullanıcı adı") }}: <strong>{{ user.account.username }}</strong></p>
+</section>
+{% endif %}
 
 <section class="card narrow">
   <form method="post" action="/profile">
-    <label for="display_name">Görünen ad</label>
-    <input id="display_name" name="display_name" maxlength="80" value="{{ user.display_name }}" placeholder="Adınız veya takma adınız">
-    <button class="btn primary" type="submit">Kaydet</button>
+    <label for="display_name">{{ _("Görünen ad") }}</label>
+    <input id="display_name" name="display_name" maxlength="80" value="{{ user.display_name }}" placeholder="{{ _('Adınız veya takma adınız') }}">
+    <button class="btn primary" type="submit">{{ _("Kaydet") }}</button>
   </form>
 </section>
 
+{% if user.account %}
 <section class="card narrow">
-  <h3>Yahoo bağlantısı</h3>
+  <h3>{{ _("Şifre değiştir") }}</h3>
+  <form method="post" action="/profile/password">
+    <label for="current">{{ _("Mevcut şifre") }}</label>
+    <input id="current" name="current" type="password" autocomplete="current-password" required>
+    <label for="new">{{ _("Yeni şifre") }}</label>
+    <input id="new" name="new" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+    <label for="new2">{{ _("Yeni şifre (tekrar)") }}</label>
+    <input id="new2" name="new2" type="password" autocomplete="new-password" minlength="8" maxlength="128" required>
+    <button class="btn" type="submit">{{ _("Şifreyi değiştir") }}</button>
+  </form>
+</section>
+{% endif %}
+
+<section class="card narrow">
+  <h3>{{ _("Yahoo bağlantısı") }}</h3>
   {% if user.is_demo %}
-    <p class="muted">Demo hesabındasınız. Gerçek liginizi görmek için çıkış yapıp Yahoo ile bağlanın.</p>
+    <p class="muted">{{ _("Demo hesabındasınız. Gerçek liginizi görmek için çıkış yapıp Yahoo ile bağlanın.") }}</p>
   {% elif user.token %}
-    <p>Yahoo hesabınız bağlı.</p>
+    <p>{{ _("Yahoo hesabınız bağlı.") }}</p>
     <form method="post" action="/profile/disconnect">
-      <button class="btn" type="submit">Bağlantıyı kaldır</button>
+      <button class="btn" type="submit">{{ _("Bağlantıyı kaldır") }}</button>
     </form>
-    <p class="muted small">İzni ayrıca Yahoo hesap ayarlarınızdan da kaldırabilirsiniz.</p>
+    <p class="muted small">{{ _("İzni ayrıca Yahoo hesap ayarlarınızdan da kaldırabilirsiniz.") }}</p>
   {% else %}
-    <a class="btn primary" href="/auth/yahoo">Yahoo ile bağlan</a>
+    <p class="muted">{{ _("Yahoo Fantasy hesabınızı bağlarsanız lig kadrolarınız Oyuncularım'a otomatik gelir. Kendi oluşturduğunuz ligler de kalır.") }}</p>
+    <a class="btn primary" href="/auth/yahoo?next=/myplayers">{{ _("Yahoo ile bağlan") }}</a>
   {% endif %}
 </section>
 
 {% if not user.is_demo %}
 <section class="card narrow danger">
-  <h3>Hesabı sil</h3>
-  <p class="muted">Profiliniz ve kayıtlı Yahoo izniniz kalıcı olarak silinir.</p>
-  <form method="post" action="/profile/delete" onsubmit="return confirm('Hesabınız kalıcı olarak silinsin mi?')">
-    <button class="btn danger" type="submit">Hesabımı sil</button>
+  <h3>{{ _("Hesabı sil") }}</h3>
+  <p class="muted">{{ _("Hesabınız, ligleriniz, seçtiğiniz oyuncular ve kayıtlı Yahoo izniniz kalıcı olarak silinir.") }}</p>
+  <form method="post" action="/profile/delete" onsubmit="return confirm('{{ _('Hesabınız kalıcı olarak silinsin mi?') }}')">
+    <button class="btn danger" type="submit">{{ _("Hesabımı sil") }}</button>
   </form>
 </section>
 {% endif %}

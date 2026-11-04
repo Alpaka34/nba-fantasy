@@ -150,11 +150,20 @@ def _user_id_from(payload: dict) -> str:
     raise YahooAuthError(f"Yahoo kullanıcı kimliği alınamadı ({resp.status_code}).")
 
 
-def upsert_user(db: Session, payload: dict) -> tuple[User, bool]:
-    """Yahoo kimliğine göre kullanıcıyı bulur ya da oluşturur. (kullanıcı, yeni_mi) döner."""
+def upsert_user(db: Session, payload: dict, link_to: User | None = None) -> tuple[User, bool]:
+    """Yahoo kimliğine göre kullanıcıyı bulur ya da oluşturur. (kullanıcı, yeni_mi) döner.
+
+    link_to: Yahoo'yu bağlamak isteyen, giriş yapmış site hesabı. Yahoo hesabı
+    başka bir kullanıcıya bağlı değilse bu kullanıcıya bağlanır.
+    """
     guid = _user_id_from(payload)
 
     user = db.query(User).filter_by(yahoo_guid=guid).one_or_none()
+    if link_to is not None:
+        if user is not None and user.id != link_to.id:
+            raise YahooAuthError("Bu Yahoo hesabı sitede başka bir kullanıcıya bağlı.")
+        link_to.yahoo_guid = guid
+        user = link_to
     is_new = user is None
     if is_new:
         user = User(yahoo_guid=guid)

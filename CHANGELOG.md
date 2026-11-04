@@ -23,6 +23,11 @@ Henüz CANLI'ya alınmamış, onay bekleyen değişiklikler.
 - **Kalıcı veritabanı:** Neon (PostgreSQL) desteği ve Alembic ile tablo
   sürümleri; uygulama açılışta veritabanını kendiliğinden günceller.
   `/healthz` cevabında kullanılan veritabanı (`db`) görünür
+- **Kayıt ol / giriş yap:** e-posta istemeden kullanıcı adı + şifre ile hesap
+  (`/signup`, `/login`). Şifreler scrypt ile özetlenerek saklanır; 5 hatalı
+  denemede hesap 15 dakika kilitlenir; aynı adresten saatte en fazla 5 hesap
+  açılabilir. Profil'den şifre değiştirme. Site hesabına sonradan Yahoo
+  bağlanabilir, kendi ligleri kalır. Şimdilik şifre sıfırlama yok
 
 <!-- CANLI'ya alınan sürümler bu satırın altına eklenir, en yenisi üstte. -->
 

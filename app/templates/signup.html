@@ -1,0 +1,32 @@
+{% extends "base.html" %}
+{% block title %}{{ _("Kaydol") }} · {{ settings.app_name }}{% endblock %}
+{% block content %}
+<section class="auth">
+  <div class="card authcard">
+    <h1>{{ _("Kaydol") }}</h1>
+    <p class="muted">{{ _("Bir kullanıcı adı ve şifre belirleyin; e-posta gerekmez.") }}</p>
+
+    {% if error %}<p class="alert">{{ error }}</p>{% endif %}
+
+    <form method="post" action="/signup" class="authform">
+      <input type="hidden" name="next" value="{{ next }}">
+      <label for="username">{{ _("Kullanıcı adı") }}</label>
+      <input id="username" name="username" value="{{ username or '' }}" autocomplete="username"
+             autocapitalize="none" spellcheck="false" minlength="3" maxlength="30"
+             pattern="[A-Za-z0-9_.\-]{3,30}" required autofocus>
+      <p class="hint">{{ _("3-30 karakter: harf (a-z), rakam, nokta, tire, alt çizgi.") }}</p>
+      <label for="password">{{ _("Şifre") }}</label>
+      <input id="password" name="password" type="password" autocomplete="new-password"
+             minlength="8" maxlength="128" required>
+      <p class="hint">{{ _("En az 8 karakter.") }}</p>
+      <label for="password2">{{ _("Şifre (tekrar)") }}</label>
+      <input id="password2" name="password2" type="password" autocomplete="new-password"
+             minlength="8" maxlength="128" required>
+      <p class="notice">{{ _("Şifrenizi unutmayın: e-posta istemediğimiz için şimdilik şifre sıfırlama yolu yok.") }}</p>
+      <button class="btn primary block" type="submit">{{ _("Hesap oluştur") }}</button>
+    </form>
+    <p class="center small">{{ _("Zaten hesabınız var mı?") }}
+      <a href="/login?next={{ next | urlencode }}"><strong>{{ _("Giriş yapın") }}</strong></a></p>
+  </div>
+</section>
+{% endblock %}

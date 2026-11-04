@@ -18,6 +18,7 @@
     <p>{{ _("Giriş yaptığınızda seçtiğiniz oyuncuların detaylı istatistiklerini burada görebilirsiniz. Birden çok ligde oynuyorsanız her ligin oyuncuları ayrı görünür.") }}</p>
     <p class="muted">{{ _("Yahoo hesabınızı bağlarsanız lig kadrolarınız otomatik gelir.") }}</p>
     <a class="btn primary" href="/login?next={{ '/myplayers' | urlencode }}">{{ _("Giriş yap") }}</a>
+    <a class="btn" href="/signup?next={{ '/myplayers' | urlencode }}">{{ _("Kaydol") }}</a>
   </section>
 {% else %}
   {% if error %}<p class="alert">{{ error }}</p>{% endif %}

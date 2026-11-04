@@ -10,7 +10,7 @@ from fastapi.templating import Jinja2Templates
 from sqlalchemy.orm import Session
 from starlette.middleware.sessions import SessionMiddleware
 
-from . import __version__
+from . import __version__, accounts
 from .cache import clear_prefix
 from .config import settings
 from .db import engine, get_db, init_db
@@ -55,6 +55,12 @@ def current_user(request: Request, db: Session = Depends(get_db)) -> User | None
 MAX_OWN_LEAGUES = 20
 
 
+def can_own_leagues(user: User | None) -> bool:
+    """Sadece Yahoo ile giren kullanıcının oyuncuları Yahoo'dan gelir, kendi ligi olmaz.
+    Site hesabı olan biri Yahoo'yu sonradan bağlasa da kendi ligleri kalır."""
+    return user is not None and (user.token is None or user.account is not None)
+
+
 def list_owner(request: Request, db: Session, user: User | None, create: bool = False) -> User | None:
     """Kendi liglerinin (elle seçilen oyuncular) sahibi.
 
@@ -62,7 +68,7 @@ def list_owner(request: Request, db: Session, user: User | None, create: bool = 
     Yahoo'ya bağlı kullanıcının oyuncuları Yahoo kadrosundan gelir. Demo hesabı
     ortak olduğu için demoya giren her tarayıcı çereze bağlı ayrı bir kayıt kullanır.
     """
-    if user is None or user.token is not None:
+    if not can_own_leagues(user):
         return None
     if not user.is_demo:
         return user
@@ -105,7 +111,7 @@ def pick_context(request: Request, db: Session, user: User | None) -> dict:
     """
     if user is None:
         return {"mode": "login"}
-    if user.token is not None:
+    if not can_own_leagues(user):
         return {"mode": "off"}
     league = active_league(request, db, list_owner(request, db, user))
     return {"mode": "pick", "league": league, "picked": nba.picked_ids(league)}
@@ -280,7 +286,7 @@ def my_players(request: Request, league: str = "", days: int = 7, q: str = "",
 
     return render(request, "my_players.html", user, tabs=tabs, current=current, data=data,
                   search=search, pick=pick, q=q.strip(), error=error, days=days,
-                  periods=nba.PERIODS, can_own=user.token is None,
+                  periods=nba.PERIODS, can_own=can_own_leagues(user),
                   max_leagues=MAX_OWN_LEAGUES, source="nba")
 
 
@@ -350,7 +356,21 @@ def my_league_delete(league_id: int, request: Request, user: User = Depends(requ
 
 @app.get("/profile")
 def profile(request: Request, user: User = Depends(require_user)):
-    return render(request, "profile.html", user, saved=request.query_params.get("saved"))
+    return render(request, "profile.html", user, saved=request.query_params.get("saved"),
+                  error=request.query_params.get("error"))
+
+
+@app.post("/profile/password")
+def profile_password(request: Request, current: str = Form(""), new: str = Form(""),
+                     new2: str = Form(""), user: User = Depends(require_user),
+                     db: Session = Depends(get_db)):
+    if user.account is None:
+        return RedirectResponse("/profile", status_code=303)
+    try:
+        accounts.change_password(db, user.account, current, new, new2)
+    except accounts.AccountError as e:
+        return RedirectResponse("/profile?" + urlencode({"error": str(e)}), status_code=303)
+    return RedirectResponse("/profile?saved=password", status_code=303)
 
 
 @app.post("/profile")
@@ -368,6 +388,11 @@ def profile_disconnect(request: Request, user: User = Depends(require_user),
     if user.token:
         db.delete(user.token)
     clear_prefix(db, f"yahoo:{user.id}:")
+    if user.account is not None:
+        # Site hesabı kalır; sadece Yahoo bağı çözülür
+        user.yahoo_guid = None
+        db.commit()
+        return RedirectResponse("/profile?saved=yahoo", status_code=303)
     db.commit()
     request.session.clear()
     return RedirectResponse("/", status_code=303)
@@ -399,15 +424,61 @@ def _after_login(request: Request) -> RedirectResponse:
     return RedirectResponse(safe_next(request.session.pop("next", "/"), "/"), status_code=303)
 
 
+def _sign_in(request: Request, user: User, next_url: str) -> RedirectResponse:
+    request.session["user_id"] = user.id
+    request.session.pop("active_league", None)
+    return RedirectResponse(safe_next(next_url, "/"), status_code=303)
+
+
+@app.post("/login")
+def login_submit(request: Request, username: str = Form(""), password: str = Form(""),
+                 next: str = Form("/"), db: Session = Depends(get_db)):
+    try:
+        user = accounts.authenticate(db, username, password)
+    except accounts.AccountError as e:
+        return render(request, "login.html", None, next=safe_next(next, "/"), error=str(e),
+                      username=username)
+    return _sign_in(request, user, next)
+
+
+@app.get("/signup")
+def signup(request: Request, next: str = "/", user: User | None = Depends(current_user)):
+    if user:
+        return RedirectResponse(safe_next(next, "/"), status_code=303)
+    return render(request, "signup.html", None, next=safe_next(next, "/"), error=None)
+
+
+@app.post("/signup")
+def signup_submit(request: Request, username: str = Form(""), password: str = Form(""),
+                  password2: str = Form(""), next: str = Form("/"), db: Session = Depends(get_db)):
+    def again(error: str):
+        return render(request, "signup.html", None, next=safe_next(next, "/"), error=error,
+                      username=username)
+
+    client_ip = request.client.host if request.client else ""
+    if not accounts.signup_allowed(client_ip):
+        return again("Bu bağlantıdan kısa sürede çok fazla hesap açıldı. Biraz sonra tekrar deneyin.")
+    try:
+        user = accounts.create_account(db, username, password, password2)
+    except accounts.AccountError as e:
+        return again(str(e))
+    accounts.record_signup(client_ip)
+    return _sign_in(request, user, next)
+
+
 @app.get("/auth/yahoo")
-def auth_yahoo(request: Request, next: str = "/"):
+def auth_yahoo(request: Request, next: str = "/", user: User | None = Depends(current_user)):
     if not settings.yahoo_configured:
-        return RedirectResponse(login_url(next) + "&" + urlencode(
-            {"error": "Yahoo girişi bu ortamda henüz açık değil (Yahoo anahtarları tanımlı değil)."}),
-            status_code=303)
+        message = "Yahoo girişi bu ortamda henüz açık değil (Yahoo anahtarları tanımlı değil)."
+        if user:
+            return RedirectResponse("/profile?" + urlencode({"error": message}), status_code=303)
+        return RedirectResponse(login_url(next) + "&" + urlencode({"error": message}), status_code=303)
     state = secrets.token_urlsafe(24)
     request.session["oauth_state"] = state
     request.session["next"] = safe_next(next, "/")
+    # Site hesabıyla girmiş kullanıcı Yahoo'yu kendi hesabına bağlar
+    if user and user.account is not None:
+        request.session["link_yahoo"] = user.id
     return RedirectResponse(authorization_url(state), status_code=303)
 
 
@@ -419,9 +490,13 @@ def auth_callback(request: Request, db: Session = Depends(get_db),
         return home_with_error(f"Yahoo izni verilmedi ({error}).")
     if not code or not state or state != expected:
         return home_with_error("Giriş isteği doğrulanamadı, lütfen tekrar deneyin.")
+    link_id = request.session.pop("link_yahoo", None)
+    link_to = db.get(User, link_id) if link_id else None
     try:
-        user, is_new = upsert_user(db, exchange_code(code))
+        user, is_new = upsert_user(db, exchange_code(code), link_to=link_to)
     except YahooAuthError as e:
+        if link_to:
+            return RedirectResponse("/profile?" + urlencode({"error": str(e)}), status_code=303)
         return home_with_error(str(e))
 
     request.session["user_id"] = user.id

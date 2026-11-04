@@ -25,6 +25,28 @@ class User(Base):
     my_leagues: Mapped[list["MyLeague"]] = relationship(
         cascade="all, delete-orphan", order_by="MyLeague.id"
     )
+    account: Mapped["SiteAccount | None"] = relationship(
+        back_populates="user", uselist=False, cascade="all, delete-orphan"
+    )
+
+
+class SiteAccount(Base):
+    """Kullanıcı adı ve şifreyle giriş. Şifrenin sadece özeti tutulur (bkz. passwords.py).
+
+    E-posta istenmiyor; şifresini unutan kullanıcı için şimdilik sıfırlama yolu yok.
+    """
+
+    __tablename__ = "site_accounts"
+
+    user_id: Mapped[int] = mapped_column(ForeignKey("users.id"), primary_key=True)
+    # Küçük harfe çevrilmiş hali; aynı ad büyük/küçük harf farkıyla iki kez alınamaz
+    username: Mapped[str] = mapped_column(String(30), unique=True)
+    password_hash: Mapped[str] = mapped_column(String(255))
+    failed_logins: Mapped[int] = mapped_column(default=0)
+    locked_until: Mapped[datetime | None]
+    created_at: Mapped[datetime] = mapped_column(default=utcnow)
+
+    user: Mapped[User] = relationship(back_populates="account")
 
 
 class YahooToken(Base):
