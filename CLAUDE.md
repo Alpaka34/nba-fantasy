@@ -43,9 +43,13 @@ Ayrıntılar: [docs/SURUM_SURECI.md](docs/SURUM_SURECI.md)
 - Arayüz metinleri `{{ _("Türkçe metin") }}` ile yazılır (`app/i18n.py`);
   şablon makroları `import ... with context` ile alınır. EN çevirileri
   henüz yok, EN seçilince Türkçe görünür.
-- Şema değişikliği: migration aracı yok; `create_all` sadece yeni tablo
-  oluşturur. Var olan tabloya sütun eklenecekse önce Alembic kurulmalı
-  (Neon'daki veri kalıcı).
+- Veritabanı: UAT ve CANLI Neon'da (PostgreSQL, bölge AWS Oregon; ana dal
+  CANLI, `uat` dalı UAT). Adres Render panelinden `DATABASE_URL` olarak
+  girilir, koda ve render.yaml'a yazılmaz. Yerelde SQLite (`data/app.db`).
+  `/healthz` cevabındaki `db` alanı hangisinin kullanıldığını gösterir.
+- Şema değişikliği Alembic ile yapılır (`migrations/`, nasıl yapıldığı
+  `migrations/README.md`'de). Uygulama açılışta veritabanını son sürüme
+  getirir. Veri kalıcı olduğu için sürüm dosyaları dikkatle gözden geçirilir.
 - Ayarlar `app/config.py` üzerinden, `.env` veya ortam değişkenlerinden gelir.
   Ortama göre davranış `settings.app_env` (`local` / `uat` / `canli`) ile ayrılır.
 - Gizli bilgiler (`.env`, `oauth2.json`, `certs/`) asla commit edilmez.

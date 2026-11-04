@@ -13,7 +13,7 @@ from starlette.middleware.sessions import SessionMiddleware
 from . import __version__
 from .cache import clear_prefix
 from .config import settings
-from .db import get_db, init_db
+from .db import engine, get_db, init_db
 from .i18n import COOKIE as LANG_COOKIE, LANGUAGES, get_lang, translator
 from .models import MyLeague, User
 from .nba import source as nba_source
@@ -544,4 +544,5 @@ def api_my_remove(league_id: int, player_id: str, request: Request,
 
 @app.get("/healthz")
 def healthz():
-    return {"ok": True, "env": settings.app_env, "version": __version__}
+    # "db": sqlite ise kalıcı veritabanı bağlı değil demektir
+    return {"ok": True, "env": settings.app_env, "version": __version__, "db": engine.dialect.name}

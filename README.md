@@ -109,14 +109,14 @@ açılışı birkaç saniye sürebilir, sonrakiler hızlıdır.
 ## Veritabanı
 
 - Yerelde SQLite (`data/app.db`).
-- Render'ın ücretsiz planında disk kalıcı değil; SQLite her yüklemede sıfırlanır
-  ve oyuncu seçimleri kaybolur. Bu yüzden UAT ve CANLI için ayrı birer
-  **Neon** (ücretsiz PostgreSQL) veritabanı kullanılır: Render'da servisin
-  "Environment" sekmesine `DATABASE_URL` olarak Neon'un verdiği bağlantı adresi
-  girilir (`postgresql://...`; sürücü otomatik ayarlanır).
-- Tablolar uygulama açılırken oluşturulur. **Var olan bir tabloya sütun
-  eklemek için henüz bir geçiş (migration) aracı yok;** kalıcı kullanıcı verisi
-  oluşmadan önce Alembic eklenmeli.
+- Render'ın ücretsiz planında disk kalıcı değil; SQLite her yüklemede ve her
+  uykuda sıfırlanır. Bu yüzden UAT ve CANLI **Neon** (ücretsiz PostgreSQL)
+  kullanır: tek proje (`nba-fantasy`, bölge AWS US West 2 / Oregon), ana dal
+  CANLI için, `uat` dalı UAT için. Render'da servisin "Environment" sekmesine
+  `DATABASE_URL` olarak Neon'un verdiği bağlantı adresi girilir
+  (`postgresql://...`, bağlantı havuzu kapalı; sürücü otomatik ayarlanır).
+- Tablolar Alembic ile sürümlenir (`migrations/`); uygulama açılırken
+  veritabanı son sürüme getirilir. Tablo değiştirme: `migrations/README.md`.
 
 ## Render notları
 

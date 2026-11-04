@@ -20,6 +20,9 @@ Henüz CANLI'ya alınmamış, onay bekleyen değişiklikler.
 - Oyuncu seçmek artık giriş gerektiriyor; giriş yapmamış ziyaretçi Oyuncularım'da
   bilgilendirme ve giriş bağlantısı görür, ☆ giriş sayfasına götürür
 - JSON API: `/api/my/players` yerine `/api/my/leagues` (lig bazlı)
+- **Kalıcı veritabanı:** Neon (PostgreSQL) desteği ve Alembic ile tablo
+  sürümleri; uygulama açılışta veritabanını kendiliğinden günceller.
+  `/healthz` cevabında kullanılan veritabanı (`db`) görünür
 
 <!-- CANLI'ya alınan sürümler bu satırın altına eklenir, en yenisi üstte. -->
 

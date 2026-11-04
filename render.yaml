@@ -23,6 +23,9 @@ services:
         generateValue: true
       - key: DEMO_MODE
         value: "true"
+      # Kalıcı veritabanı: Neon, "uat" dalı. Adres gizli olduğu için panelden girilir.
+      - key: DATABASE_URL
+        sync: false
       # BASE_URL verilmezse Render'ın kendi adresi (RENDER_EXTERNAL_URL) kullanılır.
       # Yahoo girişi açılınca YAHOO_CLIENT_ID / YAHOO_CLIENT_SECRET panelden eklenir.
 
@@ -47,6 +50,7 @@ services:
       # Yahoo erişimi onaylanıp gerçek kullanıcılar gelene kadar demo açık.
       - key: DEMO_MODE
         value: "true"
+      # Kalıcı veritabanı: Neon, ana dal. Adres gizli olduğu için panelden girilir.
+      - key: DATABASE_URL
+        sync: false
       # Alan adı alınınca: BASE_URL=https://alanadiniz.com
-      # Gerçek kullanıcı verisi saklanmaya başlamadan önce PostgreSQL'e geçilmeli
-      # (ücretsiz planda disk kalıcı değil): DATABASE_URL

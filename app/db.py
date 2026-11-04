@@ -44,7 +44,26 @@ def get_db():
         db.close()
 
 
+ROOT = Path(__file__).resolve().parent.parent
+
+
 def init_db():
+    """Veritabanını en son tablo sürümüne getirir (Alembic, migrations/).
+
+    Alembic'ten önce create_all ile kurulmuş bir veritabanında eksik tablolar
+    oluşturulur ve son sürüm olarak işaretlenir; sonraki değişiklikler normal
+    sürüm adımlarıyla uygulanır.
+    """
+    from alembic import command
+    from alembic.config import Config
+    from sqlalchemy import inspect
+
     from . import models  # noqa: F401  (tabloların kaydı için)
 
-    Base.metadata.create_all(engine)
+    cfg = Config(str(ROOT / "alembic.ini"))
+    tables = inspect(engine).get_table_names()
+    if tables and "alembic_version" not in tables:
+        Base.metadata.create_all(engine)
+        command.stamp(cfg, "head")
+    else:
+        command.upgrade(cfg, "head")

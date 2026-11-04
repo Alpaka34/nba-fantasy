@@ -77,7 +77,11 @@ tarafından otomatik üretilir ve iki ortamda farklıdır.
 | `DEMO_MODE` | `true` | Yahoo onayı gelene kadar `true` |
 | `BASE_URL` | Render adresi (otomatik) | Alan adı alınınca `https://alanadiniz.com` |
 | `YAHOO_CLIENT_ID` / `SECRET` | Yahoo onayından sonra | Kapsamı genişletilmiş başvurudan sonra |
-| `DATABASE_URL` | SQLite (her yüklemede sıfırlanır) | Gerçek kullanıcılar gelmeden PostgreSQL |
+| `DATABASE_URL` | Neon `uat` dalı (panelden girilir) | Neon ana dal (panelden girilir) |
+
+Veritabanı tabloları değiştiyse (`migrations/versions/` altında yeni dosya)
+uygulama açılırken veritabanını kendiliğinden günceller. CANLI'ya alışta bu
+değişiklik CANLI'nın kalıcı verisine de uygulanır; önce UAT'de denenmiş olmalı.
 
 Yahoo girişi açılırken her ortamın adresi Yahoo uygulamasına Redirect URI
 olarak eklenmelidir: `https://<ortam-adresi>/auth/callback`.
